@@ -14,12 +14,13 @@ fi
 
 # extract directory name to test the directory
 directory_name=$(dirname $writefile)
-# echo "The dir name is ${directory_name}"
+# echo "$directory_name"
 
 # extract file name
 file_name=$(basename $writefile)
-# echo "The file name is ${file_name}"
+# echo "file_name"
 
+# if not a directory - create one and print status
 if [ ! -d $directory_name ]
 then
 	echo "Directory does not exist yet"
@@ -34,17 +35,16 @@ then
 	fi
 fi
 
-#if [ -d $directory_name ]
-#then
-#	echo "correct directory path"
-#fi	
+# write in the file
 
-touch "$directory_name/$file_name"
-echo "$writestr" >> "$directory_name/$file_name"
-echo "completed writer execution"
+echo "$writestr" > "$directory_name/$file_name"
 
-
-
-
-
+if [ $? -eq 0 ] 
+then
+	echo "file creation successfull"
+	exit 0
+else
+	echo "file creation unsuccessful"
+	exit 1
+fi
 

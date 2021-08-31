@@ -8,7 +8,7 @@ then
 	echo "Total number of arguments should be 2"
 	echo "The order of the arguments should be:"
 	echo "	1)File Directory path"
-	echo "	2)String to be searched in the specified directory path."	
+	echo "	2)String to be searched in the specified directory path"	
 	exit 1
 fi
 	
@@ -20,10 +20,10 @@ fi
 	
 
 # calculates the total number of files	
-filesnum=$(find $filesdir -type f | wc -l )	
+filesnum=$(grep "$searchstr" -rl $filesdir | wc -l )	
 
 # finds the number of occurances of the word in the files
-no_of_occurances=$(grep -r "$searchstr" $filesdir | wc -l)
+no_of_occurances=$(grep "$searchstr" $(find $filesdir -type f) | wc -l)
 
 echo "The number of files are ${filesnum} and the number of matching lines are ${no_of_occurances}"
 
