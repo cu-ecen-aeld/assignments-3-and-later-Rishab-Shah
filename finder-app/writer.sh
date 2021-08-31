@@ -2,6 +2,7 @@
 writefile=$1
 writestr=$2
 
+# Checking if the number of parameters are two
 if [ $# -ne 2 ]
 then
 	echo "ERROR: Invalid number of arguments"
@@ -13,32 +14,32 @@ then
 fi
 
 # extract directory name to test the directory
-directory_name=$(dirname $writefile)
-# echo "$directory_name"
+DIRECTORY_NAME=$(dirname $writefile)
+# echo "$DIRECTORY_NAME"
 
 # extract file name
-file_name=$(basename $writefile)
-# echo "file_name"
+FILE_NAME=$(basename $writefile)
+# echo "$FILE_NAME"
 
 # if not a directory - create one and print status
-if [ ! -d $directory_name ]
+if [ ! -d $DIRECTORY_NAME ]
 then
 	echo "Directory does not exist yet"
-	mkdir -p "$directory_name"
+	mkdir -p "$DIRECTORY_NAME"
 	
-	if [ -d "$directory_name" ]
+	if [ -d "$DIRECTORY_NAME" ]
 	then
-		echo "$directory_name created"
+		echo "$DIRECTORY_NAME created"
 	else
-		echo "$directory_name failed to create"
+		echo "$DIRECTORY_NAME failed to create"
 		exit 1
 	fi
 fi
 
 # write in the file
+echo "$writestr" > "$DIRECTORY_NAME/$FILE_NAME"
 
-echo "$writestr" > "$directory_name/$file_name"
-
+# Check if the file was created sucessfully
 if [ $? -eq 0 ] 
 then
 	echo "file creation successfull"
@@ -47,4 +48,5 @@ else
 	echo "file creation unsuccessful"
 	exit 1
 fi
+
 
