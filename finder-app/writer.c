@@ -9,17 +9,19 @@
  *  https://stackoverflow.com/questions/1658476/c-fopen-vs-open
  *  https://linux.die.net/man/3/syslog
  *  https://linux.die.net/man/8/syslogd
+ *  author: Rishab Shah
+ *  course: aesd - assignment 2
 */
 
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <libgen.h>	    /* dirname,basename,mkdir */
-#include <unistd.h>	    /* access() */
-#include <sys/stat.h>	  /* directory ecistence check */
-#include <errno.h>	    /* perror() */
-#include <stdarg.h>     /* syslog functionality */
-#include <syslog.h>     /* for syslog open/close functioanlity */
+#include <libgen.h>	    	/* dirname,basename,mkdir */
+#include <unistd.h>	    	/* access() */
+#include <sys/stat.h>		/* directory ecistence check */
+#include <errno.h>	    	/* perror() */
+#include <stdarg.h>		/* syslog functionality */
+#include <syslog.h>		/* for syslog open/close functioanlity */
 
 //function prototype
 int checkdirpathexistence(const char* path);
@@ -34,6 +36,14 @@ int main(int argc,char *argv[])
   //Check for required number of arguments
   if(argc != 3)
   {
+#if 1
+    printf("ERROR: Invalid number of arguments\n");
+    printf("Total number of arguments should be 2\n");
+    printf("The order of the arguments should be:\n");
+    printf("[./writer] [arg 1] [arg 2]\n");
+    printf("  1)Name of the file along with the directory. Ex - /home/rishab/abcd.txt\n");
+    printf("  2)String to be written inside the file mentioned in arguement 1 i.e. inside abcd.txt\n"); 
+#endif
     syslog(LOG_ERR,"ERROR: Invalid number of arguments\n");
     syslog(LOG_ERR,"Total number of arguments should be 2\n");
     syslog(LOG_ERR,"The order of the arguments should be:\n");
@@ -48,7 +58,7 @@ int main(int argc,char *argv[])
   char* directory_path_rcvd = argv[1]; 
   char* string_to_be_written = argv[2];
    
-  char file_creation_path_req[200];
+  char file_creation_path_req[600];
   memset(file_creation_path_req,'\0',sizeof(file_creation_path_req));
   strcpy(file_creation_path_req,argv[1]);
   
@@ -64,7 +74,7 @@ int main(int argc,char *argv[])
   if(ret != 1)
   {
     syslog(LOG_ERR,"directory creation failed\n");
-    perror("directory functionality:");
+    perror("directory functionality");
     exit(1);
   }
   
@@ -76,7 +86,6 @@ int main(int argc,char *argv[])
   if(ret == 0)
   {
     syslog(LOG_DEBUG,"file created successfully\n");
-    printf("file created successfully\n");
   }
   
   closelog();
@@ -96,9 +105,7 @@ int checkdirpathexistence(const char* path)
     //directory exists
     return 1;
   }
-  
-  printf("inside - 4 is %s\n",path);
-  
+ 
   int status;
   char command[10];
   memset(command,'\0',sizeof(command));
@@ -109,14 +116,11 @@ int checkdirpathexistence(const char* path)
   strcpy(command,"mkdir -p ");
   strncpy(command_executed,command,strlen(command));
   strncat(command_executed,path,strlen(path));
-  
-  printf("final string is %s\n",command_executed);
-  
+    
   status = system(command_executed);
   if(status == 0)
   {
     syslog(LOG_DEBUG,"directory created successfully\n");
-    printf("directory created successfully\n");
   }
 
   return 1;
@@ -131,7 +135,7 @@ int check_file_existence(const char *path)
   if(status != 0)
   {
     syslog(LOG_ERR,"file %s does not exist\n",path);
-    perror("file existence error:");
+    perror("file existence error");
     return 1;
   }
 
@@ -149,7 +153,7 @@ int create_file_and_write(const char* path, const char* string_to_write, const c
   if(!file_ptr)
   {
     syslog(LOG_ERR,"file creation,opening failure\n");
-    perror("file creation:");
+    perror("file creation");
     exit(1);
   }
 
@@ -159,7 +163,7 @@ int create_file_and_write(const char* path, const char* string_to_write, const c
   if(!ret_status)
   {
     syslog(LOG_ERR,"file writing failure\n");
-    perror("file writing:");
+    perror("file writing");
     fclose(file_ptr);
     exit(1);
   }
