@@ -22,6 +22,7 @@
 #include <errno.h>	    	/* perror() */
 #include <stdarg.h>		/* syslog functionality */
 #include <syslog.h>		/* for syslog open/close functioanlity */
+#include <fcntl.h>
 
 //function prototype
 int checkdirpathexistence(const char* path);
@@ -36,20 +37,12 @@ int main(int argc,char *argv[])
   //Check for required number of arguments
   if(argc != 3)
   {
-#if 1
     printf("ERROR: Invalid number of arguments\n");
     printf("Total number of arguments should be 2\n");
     printf("The order of the arguments should be:\n");
     printf("[./writer] [arg 1] [arg 2]\n");
     printf("  1)Name of the file along with the directory. Ex - /home/rishab/abcd.txt\n");
     printf("  2)String to be written inside the file mentioned in arguement 1 i.e. inside abcd.txt\n"); 
-#endif
-    syslog(LOG_ERR,"ERROR: Invalid number of arguments\n");
-    syslog(LOG_ERR,"Total number of arguments should be 2\n");
-    syslog(LOG_ERR,"The order of the arguments should be:\n");
-    syslog(LOG_ERR,"[./writer] [arg 1] [arg 2]\n");
-    syslog(LOG_ERR,"  1)Name of the file along with the directory. Ex - /home/rishab/abcd.txt\n");
-    syslog(LOG_ERR,"  2)String to be written inside the file mentioned in arguement 1 i.e. inside abcd.txt\n"); 
     exit(1);
   }
 
@@ -145,30 +138,36 @@ int check_file_existence(const char *path)
 
 int create_file_and_write(const char* path, const char* string_to_write, const char* file_name)
 {
-  FILE* file_ptr;
+  //FILE* file_ptr;
   int ret_status;
-  
-  file_ptr = fopen(path,"w");
- 
-  if(!file_ptr)
+
+  int file_des;
+  mode_t mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
+
+  //file_ptr = fopen(path,"w");
+  file_des = open(path, O_WRONLY | O_CREAT | O_TRUNC, mode);
+  if(file_des == -1) //file_ptr
   {
     syslog(LOG_ERR,"file creation,opening failure\n");
     perror("file creation");
     exit(1);
   }
 
-  ret_status = fwrite(string_to_write,sizeof(char),strlen(string_to_write),file_ptr);
+  ret_status = write(file_des,string_to_write,strlen(string_to_write));
+  //ret_status = fwrite(string_to_write,sizeof(char),strlen(string_to_write),file_ptr);
   syslog(LOG_DEBUG,"Writing %s to %s\n",string_to_write,file_name);
- 
-  if(!ret_status)
+
+  if(ret_status == -1)
   {
     syslog(LOG_ERR,"file writing failure\n");
     perror("file writing");
-    fclose(file_ptr);
+    //fclose(file_ptr);
+    close(file_des);
     exit(1);
   }
   
-  fclose(file_ptr);
+  close(file_des);
+  //fclose(file_ptr);
   
   return 0;
 }
