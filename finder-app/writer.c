@@ -23,6 +23,7 @@
 #include <stdarg.h>		/* syslog functionality */
 #include <syslog.h>		/* for syslog open/close functioanlity */
 #include <fcntl.h>
+#include <limits.h>
 
 //function prototype
 int checkdirpathexistence(const char* path);
@@ -51,7 +52,7 @@ int main(int argc,char *argv[])
   char* directory_path_rcvd = argv[1]; 
   char* string_to_be_written = argv[2];
    
-  char file_creation_path_req[600];
+  char file_creation_path_req[PATH_MAX];
   memset(file_creation_path_req,'\0',sizeof(file_creation_path_req));
   strcpy(file_creation_path_req,argv[1]);
   
@@ -142,7 +143,7 @@ int create_file_and_write(const char* path, const char* string_to_write, const c
   int ret_status;
 
   int file_des;
-  mode_t mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
+  mode_t mode = S_IRWXU | S_IXGRP | S_IRWXO;
 
   //file_ptr = fopen(path,"w");
   file_des = open(path, O_WRONLY | O_CREAT | O_TRUNC, mode);

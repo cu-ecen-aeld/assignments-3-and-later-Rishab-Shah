@@ -1,4 +1,11 @@
 #include "systemcalls.h"
+#include <stdlib.h>	
+#include <syslog.h>	
+#include <sys/stat.h>	
+#include <unistd.h>	//fork()
+#include <sys/types.h>	//waitpid()
+#include <sys/wait.h>	//waitpid()
+#include <string.h>
 
 /**
  * @param cmd the command to execute with system()
@@ -12,12 +19,20 @@ bool do_system(const char *cmd)
 
 /*
  * TODO  add your code here
- *  Call the system() function with the command set in the dmd
+ *  Call the system() function with the command set in the cmd
  *   and return a boolean true if the system() call completed with success 
  *   or false() if it returned a failure
 */
+    int status;
+    status = system(cmd);
+    printf("COMMAND_STATUS is %s %d\n",cmd,status);
+    if(status == 0)
+    {
+	syslog(LOG_DEBUG,"%s command executed successfully\n",cmd);
+	return true;
+    }
 
-    return true;
+    return false;
 }
 
 /**
@@ -47,7 +62,7 @@ bool do_exec(int count, ...)
     command[count] = NULL;
     // this line is to avoid a compile warning before your implementation is complete
     // and may be removed
-    command[count] = command[count];
+    //command[count] = command[count];
 
 /*
  * TODO:
@@ -58,6 +73,79 @@ bool do_exec(int count, ...)
  *   as second argument to the execv() command.
  *   
 */
+#if 0
+    printf("COUINT IS %d\n",count);
+    printf("COMMAND 0 - IS %s\n",command[0]);
+    printf("COMMAND 1 - IS %s\n",command[1]);
+    printf("COMMAND 2 - IS %s\n",command[2]);
+#endif
+    int status;
+    pid_t pid;
+    pid = fork();
+
+    //printf("PID VALUE IS %d\n",pid);
+   
+    if(pid == -1)
+    {
+	//printf("Does this execute?\n");
+	return false;
+    }
+   
+    char *argv[count];
+    
+    for(int i = 0; i < count;i++)
+    {
+	argv[i] = command[i+1];
+    }
+
+    int ret_status;
+    //printf("what is this? %s\n",command[1]);
+    ret_status = execv(command[0],argv);
+    printf("ret_status %d\n",ret_status);
+    
+    if(ret_status == -1 )
+    {
+	printf("exec is failing\n");
+ #if 0
+    	if(waitpid(pid,&status,0) == -1)
+    	{
+	    printf("waitpid::");
+	    return false;
+	}
+	else if(WIFEXITED(status))
+	{
+	    printf("status =%d\n",WEXITSTATUS(status));
+	    syslog(LOG_DEBUG,"Normal termination with exit status = %d\n",WEXITSTATUS(status));
+	    return WEXITSTATUS(status);
+	}
+	else
+	{
+	    printf("Am I here?\n");
+	    /* DO nothing */
+	}
+	printf("here?");
+#endif
+	return false;
+    }
+   
+#if 1
+
+    if(waitpid(pid,&status,0) == -1)
+    {
+	printf("waitpid::");
+	return false;
+    }
+    else if(WIFEXITED(status))
+    {
+	printf("status =%d\n",WEXITSTATUS(status));
+	syslog(LOG_DEBUG,"Normal termination with exit status = %d\n",WEXITSTATUS(status));
+	return WEXITSTATUS(status);
+    }
+    else
+    {
+	/* DO nothing */
+    }
+#endif
 
     va_end(args);
 
