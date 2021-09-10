@@ -68,8 +68,6 @@ bool do_exec(int count, ...)
     command[count] = NULL;
     // this line is to avoid a compile warning before your implementation is complete
     // and may be removed
-    //command[count] = command[count];
-
 /*
  * TODO:
  *   Execute a system command by calling fork, execv(),
@@ -98,37 +96,23 @@ bool do_exec(int count, ...)
 	//Indicates that the child has been created succesfully
 	//Now, we can proceed ahead to replace the address space of
 	//the process for executing command
-	printf("I am the child, my pid is %d\n",pid);
-	//converting list into array for execv input
-#if 0
-	char *argv[count];
-	for(int i = 0; i < count;i++)
-      	{
-	    argv[i] = command[i+1];
-	}
-#endif	
+	//printf("I am the child, my pid is %d\n",pid);
+
 	ret_status = execv(command[0],&command[0]);
 	
 	if(ret_status == -1 )
 	{
 	    perror("execv");
-	    return false;
-	}
-	else
-	{
-	    //ideally should not reach here
-	    printf("reached here meaning: some issue with exec in child's context\n");
 	    exit(-1);
-	    //return false;
 	}
     }
-    else if(pid > 0)
+    else
     {
-	printf("I am the parent in the main process context -- %d\n",pid);
+	//printf("I am the parent in the main process context -- %d\n",pid);
 	//put wait logic here
 	//when execv is successful the child wont return till completion or might have returned
 	//but parent is waiting for its exit status
-#if 1
+	
 	if(waitpid(pid,&status,0) == -1)
 	{
 	    perror("waitpid");
@@ -137,57 +121,14 @@ bool do_exec(int count, ...)
 
 	if(WIFEXITED(status))
 	{
-	    //printf("or here -- %d\n\n\n\n\n\n",status);
-	    //return false;
-	    //return WEXITSTATUS(status);
-	    if(WEXITSTATUS(status)!= 0)
+	    if(WEXITSTATUS(status) !=0)
 	    {
 		return false;
 	    }
 	}
-#endif
-
-	//printf("-----------ret_status = %d\n",ret_status);
-#if 0
-	pid = wait(&status);
-	if(pid == -1)
-	{
-	    perror("wait");
-	    return false;
-	}
-
-	printf("print in ths context of wait (parent) == %d\n",pid);
-
-	if(WIFEXITED(status))
-	{
-	    printf("INHERE::ret_status = %d	",ret_status);
-	    printf("Normal termination with exit status = %d\n",WEXITSTATUS(status));
-	    return WEXITSTATUS(status);
-	}
-
-	if(WIFSIGNALED(status))
-	{
-	    printf("Killed by signal = %d%s\n",WTERMSIG(status),WCOREDUMP(status) ? " (Dumped core)" : "");
-	}
-
-	if(WIFSTOPPED(status))
-	{
-	    printf("Stopped by signal = %d\n",WSTOPSIG(status));
-	}
-	if(WIFCONTINUED(status))
-	{
-	    printf("Continued\n");
-	}
-#endif
-
-    }
-    else
-    {
-	printf("should not reach here - parent or child\n");
     }
 
-    va_end(args);
-    printf("Do you print????\n");
+    va_end(args); 
     return true;
 }
 
