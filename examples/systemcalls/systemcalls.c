@@ -4,6 +4,7 @@
 #include <unistd.h>	//fork()
 #include <sys/types.h>	//waitpid()
 #include <sys/wait.h>	//waitpid()
+#include <fcntl.h>
 #include "systemcalls.h"
 
 /**
@@ -160,6 +161,72 @@ bool do_exec_redirect(const char *outputfile, int count, ...)
  *   The rest of the behaviour is same as do_exec()
  *   
 */
+
+    int ret_status = 0;
+    int status;
+
+    pid_t pid;
+    pid = fork();
+ 
+    if(pid == -1)
+    {
+	//Since, new process creation failed, the program is still
+	//in parent context
+	perror("fork");
+	return false;
+    }
+    else if(pid == 0)
+    {
+	//Indicates that the child has been created succesfully
+	//Now, we can proceed ahead to replace the address space of
+	//the process for executing command
+	//printf("I am the child, my pid is %d\n",pid);
+	
+	int file_des = open(outputfile,O_WRONLY | O_CREAT, 0644);
+
+	if(file_des < 0)
+	{
+	    perror("open");
+	    abort();
+	}
+
+	if(dup2(file_des,1) < 0)
+	{
+	    perror("dup2");
+	    abort();
+	}
+
+	close(file_des);
+
+	ret_status = execv(command[0],&command[0]);
+	
+	if(ret_status == -1 )
+	{
+	    perror("execv");
+	    exit(-1);
+	}
+    }
+    else
+    {
+	//printf("I am the parent in the main process context -- %d\n",pid);
+	//put wait logic here
+	//when execv is successful the child wont return till completion or might have returned
+	//but parent is waiting for its exit status
+	
+	if(waitpid(pid,&status,0) == -1)
+	{
+	    perror("waitpid");
+	    return false;
+	}
+
+	if(WIFEXITED(status))
+	{
+	    if(WEXITSTATUS(status) !=0)
+	    {
+		return false;
+	    }
+	}
+    }
 
     va_end(args);
     
