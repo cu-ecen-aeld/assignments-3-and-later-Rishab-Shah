@@ -48,7 +48,7 @@ fi
 
 #TODO: Add Image to outdir
 echo "-----Adding the Image in outdir"
-cp ${OUTDIR}/linux-stable/arch/${ARCH}/boot/Image ${OUTDIR}
+sudo cp ${OUTDIR}/linux-stable/arch/${ARCH}/boot/Image ${OUTDIR}
 echo "-----Creating the staging directory for the root filesystem"
 
 cd "$OUTDIR"
@@ -88,6 +88,7 @@ fi
 echo "-----Entered busy box"
 # TODO: Make and install busybox
 echo "====================================HEY HERE++++++++++++++++++++++++++++++++++++"
+
 make ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} CONFIG_PREFIX=$OUTDIR/rootfs install
 
 echo "NOW HERE ____________________________________________________________________________________________________________________________________________________"
@@ -153,6 +154,7 @@ sudo cp ${OLD_PATH}/writer ${OUTDIR}/rootfs/home/
 sudo cp ${OLD_PATH}/finder.sh  ${OUTDIR}/rootfs/home/
 sudo cp ${OLD_PATH}/conf/username.txt ${OUTDIR}/rootfs/home/conf/
 sudo cp ${OLD_PATH}/finder-test.sh ${OUTDIR}/rootfs/home/
+sudo cp ${OLD_PATH}/autorun-qemu.sh ${OUTDIR}/rootfs/home/
 
 # TODO: Chown the root directory
 cd "${OUTDIR}"
