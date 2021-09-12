@@ -25,32 +25,12 @@ bool do_system(const char *cmd)
 */
     int status;
     status = system(cmd);
-
-    //printf("COMMAND_STATUS is %s %d\n",cmd,status);
-
+    
+    printf("=============================================== STATUS = %d, WIFEXITED = %d, WEXITSTATUS = %d\n",status,WIFEXITED(status),WEXITSTATUS(status));
+   
     if(status == 0)
     {
-	syslog(LOG_DEBUG,"%s command executed successfully\n",cmd);
 	return true;
-    }
-    else
-    {
-	//do wait and stuff to check the issues with the child
-#if 0	
-	if(waitpid(pid,&status,0) == -1)
-	{
-	    perror("waitpid");
-	    return false;
-	}
-
-	if(WIFEXITED(status))
-	{
-	    if(WEXITSTATUS(status) !=0)
-	    {
-		return false;
-	    }
-	}
-#endif
     }
 
     return false;
