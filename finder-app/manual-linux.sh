@@ -44,7 +44,7 @@ if [ ! -e ${OUTDIR}/linux-stable/arch/${ARCH}/boot/Image ]; then
     echo "-----Completed make arm-gcc mrproper step"
     make ARCH=arm64 CROSS_COMPILE=${CROSS_COMPILE} defconfig
     echo "-----Completed make arm-gcc defconfig step"
-    make -j4 ARCH=arm64 CROSS_COMPILE=${CROSS_COMPILE} all
+    make -j6 ARCH=arm64 CROSS_COMPILE=${CROSS_COMPILE} all
     echo "-----Completed make arm-gcc all step"
     make ARCH=arm64 CROSS_COMPILE=${CROSS_COMPILE} modules
     echo "-----Completed make arm-gcc modules step"
@@ -54,7 +54,7 @@ fi
 
 
 # TODO: Add Image to outdir
-sudo cp ${OUTDIR}/linux-stable/arch/${ARCH}/boot/Image ${OUTDIR}
+cp ${OUTDIR}/linux-stable/arch/${ARCH}/boot/Image ${OUTDIR}
 echo "-----Added the Image in outdir"
 
 
