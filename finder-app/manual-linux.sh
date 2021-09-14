@@ -145,17 +145,17 @@ echo "-----Completed wrter utility verification"
 # on the target rootfs
 cd "${FINDER_APP_DIR}"
 echo "${FINDER_APP_DIR}"
-sudo cp ${FINDER_APP_DIR}/writer ${OUTDIR}/rootfs/home/
-sudo cp ${FINDER_APP_DIR}/finder.sh  ${OUTDIR}/rootfs/home/
-sudo cp ${FINDER_APP_DIR}/conf/username.txt ${OUTDIR}/rootfs/home/conf/
-sudo cp ${FINDER_APP_DIR}/finder-test.sh ${OUTDIR}/rootfs/home/
-sudo cp ${FINDER_APP_DIR}/autorun-qemu.sh ${OUTDIR}/rootfs/home/
+cp ${FINDER_APP_DIR}/writer ${OUTDIR}/rootfs/home/
+cp ${FINDER_APP_DIR}/finder.sh  ${OUTDIR}/rootfs/home/
+cp ${FINDER_APP_DIR}/conf/username.txt ${OUTDIR}/rootfs/home/conf/
+cp ${FINDER_APP_DIR}/finder-test.sh ${OUTDIR}/rootfs/home/
+cp ${FINDER_APP_DIR}/autorun-qemu.sh ${OUTDIR}/rootfs/home/
 echo "-----Completed copying files to QEMU environment"
 
 
 # TODO: Chown the root directory
 cd "${OUTDIR}"
-sudo chown -R root:root *
+sudo chown -R root:root rootfs
 echo "-----Completed chown step"
 
 
