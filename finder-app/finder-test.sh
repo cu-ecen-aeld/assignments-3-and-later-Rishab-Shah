@@ -8,7 +8,8 @@ set -u
 NUMFILES=10
 WRITESTR=AELD_IS_FUN
 WRITEDIR=/tmp/aeld-data
-username=$(cat conf/username.txt)
+username=$(cat /etc/finder-app/conf/username.txt)
+WRITE_OUTPUT_PATH=/tmp/assignment-4-result.txt
 
 if [ $# -lt 2 ]
 then
@@ -47,10 +48,11 @@ fi
 
 for i in $( seq 1 $NUMFILES)
 do
-	./writer "$WRITEDIR/${username}$i.txt" "$WRITESTR"
+	writer "$WRITEDIR/${username}$i.txt" "$WRITESTR"
 done
 
-OUTPUTSTRING=$(./finder.sh "$WRITEDIR" "$WRITESTR")
+OUTPUTSTRING=$(finder.sh "$WRITEDIR" "$WRITESTR")
+writer "${WRITE_OUTPUT_PATH}" "${OUTPUTSTRING}"
 
 set +e
 echo ${OUTPUTSTRING} | grep "${MATCHSTR}"
@@ -58,6 +60,6 @@ if [ $? -eq 0 ]; then
 	echo "success"
 	exit 0
 else
-	echo "failed: expected  ${MATCHSTR} in ${OUTPUTSTRING} but instead found"
+	echo "failed: expected ${MATCHSTR} in ${OUTPUTSTRING} but instead found"
 	exit 1
 fi
