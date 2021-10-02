@@ -23,7 +23,7 @@
 #include <signal.h> //signal
 #include <syslog.h> //syslog
 
-//#define DAEMON_CODE     (0)
+#define DAEMON_CODE     (0)
 
 //redundant
 //#include <sys/types.h>
@@ -38,6 +38,7 @@
 #define MULTIPLIER_FACTOR     (7)
 
 int file_des = 0;
+int server_socket_fd = 0;
 sigset_t x;
 int g_bytes_at_each_iteration[500] = {0};
 /* Function prototypes */
@@ -48,9 +49,11 @@ void exit_handling();
 
 int main(int argc, char const *argv[])
 {
+  #if DAEMON_CODE
   //daemon
-  //pid_t sid = 0, pid = 0;
-  //int i = 0;
+  pid_t sid = 0, pid = 0;
+  int i = 0;
+  #endif
   openlog(NULL, 0, LOG_USER);
    
   /* Signal handler */ // Why? Running in while loop client connection
@@ -81,9 +84,7 @@ int main(int argc, char const *argv[])
   }
   #endif
 
-  /* Socket */
-  int server_socket_fd = 0;
-  
+  /* Socket */  
   server_socket_fd = socket(AF_INET,SOCK_STREAM,0); 
   if(server_socket_fd == -1)
   {
@@ -119,7 +120,44 @@ int main(int argc, char const *argv[])
   }
   
   /* Daemon creation*/
-
+  #if DAEMON_CODE
+  printf("daemon\n");
+  pid = fork();
+  if(pid == -1)
+  {
+    perror("fork failed");
+    return -1;
+  }
+  else if(pid > 0)
+  {
+    //parent context
+    printf("CHILD PID = %d\n",pid);
+    exit(EXIT_SUCCESS);
+  }
+  
+  /* create new session and process grp*/
+  if(setsid()== -1)
+  {
+    perror("set sid failure");
+    return -1;
+  }
+  
+  //change cd to root
+  if(chdir("/") == -1)
+  {
+    perror("chdir");
+    return -1;
+  }
+  
+  //close all open files (in,out,error)
+  for(int i = 0; i<NR_OPEN; i++)
+  {
+    close(i);
+  }
+  
+  #endif
+  
+ 
   /* listen */
   int server_listen_fd = 0;
   
@@ -142,7 +180,6 @@ int main(int argc, char const *argv[])
     exit(1);
   }
   
-
   /* local declarations */
   int current_data_pos = 0;
   int read_status = 0;
@@ -156,13 +193,10 @@ int main(int argc, char const *argv[])
   }
   
   char* read_file_buffer_ptr = NULL;
-    
-  
   bool run_status = true;
+  
   while(run_status)
   {    
-
-    
     /* Accept */
     int client_accept_fd = 0;
     socklen_t server_address_len = 0;
@@ -253,7 +287,6 @@ int main(int argc, char const *argv[])
     }
     
     send(client_accept_fd,read_file_buffer_ptr,current_data_pos,0);
-    
     close(client_accept_fd);
       
     sig_status = sigprocmask(SIG_UNBLOCK, &x, NULL);
@@ -264,12 +297,11 @@ int main(int argc, char const *argv[])
     }   
   }
   
-    free(read_file_buffer_ptr);
-    read_file_buffer_ptr = NULL;
-        
-    free(writer_file_buffer_ptr);
-    writer_file_buffer_ptr = NULL;    
-
+  free(read_file_buffer_ptr);
+  read_file_buffer_ptr = NULL;
+      
+  free(writer_file_buffer_ptr);
+  writer_file_buffer_ptr = NULL;  
 
   exit_handling();
   return 0;
@@ -304,9 +336,7 @@ void socket_termination_signal_handler(int signo)
     exit(-1);
   }
   
-  //closed any pending operations
-  //close open sockets
-  //delete the FILE created
+
   exit_handling();
   exit(0);
 }
@@ -314,10 +344,9 @@ void socket_termination_signal_handler(int signo)
 
 void exit_handling()
 { 
-  int ret_status = 0;
-  ret_status = remove(FILE_PATH_TO_WRITE);
-  printf("ret_status :: %d\n",ret_status);
-  
+  //closed any pending operations
+  //close open sockets
+  //delete the FILE created  
   int sig_status = 0;
   sig_status = sigprocmask(SIG_UNBLOCK, &x, NULL);
   //printf("sig_status 2= %d\n",sig_status);
@@ -326,6 +355,11 @@ void exit_handling()
     perror("sig_status - 2");
   }  
   
+  int ret_status = 0;
+  ret_status = remove(FILE_PATH_TO_WRITE);
+  printf("ret_status :: %d\n",ret_status);
+  
+  close(server_socket_fd);
   close(file_des);
   closelog();
 }
