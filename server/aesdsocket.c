@@ -6,6 +6,7 @@
  * https://www.tutorialspoint.com/c_standard_library/c_function_strchr.htm
  * https://www.ibm.com/docs/en/zos/2.1.0?topic=functions-sigprocmask-examine-change-thread
  * https://stackoverflow.com/questions/25261/set-and-oldset-in-sigprocmask
+ * https://pubs.opengroup.org/onlinepubs/009604599/functions/stdin.html
  * Linux notes for reference
  * Author : Rishab Shah
  */
@@ -57,7 +58,6 @@ int main(int argc, char *argv[])
     if((strcmp(argv[1],"-d")) == 0)
     {
       set_daemon = 1;
-      printf("here\n");
     }
   }
 #endif
@@ -130,7 +130,7 @@ int main(int argc, char *argv[])
   /* Daemon creation*/
   if(set_daemon == 1)
   {
-    printf("daemon\n");
+    syslog(LOG_DEBUG,"daemon\n");
     pid = fork();
     if(pid == -1)
     {
@@ -140,7 +140,7 @@ int main(int argc, char *argv[])
     else if(pid > 0)
     {
       //parent context
-      printf("CHILD PID = %d\n",pid);
+      syslog(LOG_DEBUG,"CHILD PID = %d\n",pid);
       exit(EXIT_SUCCESS);
     }
     
@@ -158,20 +158,17 @@ int main(int argc, char *argv[])
       return -1;
     }
     
-   //close all open files (in,out,error)
+    //close all open files (in,out,error)
     close(STDIN_FILENO);
     close(STDOUT_FILENO);
     close(STDERR_FILENO); 
-    //for(int i = 0; i<NR_OPEN; i++)
-    //{
-     // close(i);
-    //}
-    
+
     open("/dev/null",O_RDWR);
     dup(0);
     dup(0);
   }
   #endif
+  
   /* listen */
   int server_listen_fd = 0;
   
@@ -233,7 +230,6 @@ int main(int argc, char *argv[])
     /* sig status */
     int sig_status = 0;
     sig_status = sigprocmask(SIG_BLOCK, &x, NULL);
-    //printf("sig_status 1= %d\n",sig_status);
     if(sig_status == -1)
     {
       perror("sig_status - 1");
@@ -246,10 +242,7 @@ int main(int argc, char *argv[])
       if(no_of_bytes_rcvd + curr_location >= write_buffer_size)
       {
         write_buffer_size *= MULTIPLIER_FACTOR; 
-        //counter++;
-        //write_buffer_size = (counter*BUFFER_CAPACITY);
-        //printf("write_buffer_size = %d\n",write_buffer_size);
-        //printf(" ");//usleep(1000000);
+        //printf(" ");
         syslog(LOG_DEBUG,"write_buffer_size = %d\n",write_buffer_size);
         char* tmp_ptr = realloc(writer_file_buffer_ptr, write_buffer_size);
         
@@ -284,10 +277,8 @@ int main(int argc, char *argv[])
     
     /* lseek required to bring to start position*/
     current_data_pos = lseek(file_des,0,SEEK_CUR);
-    //printf("position is %d\n",current_data_pos);
+    syslog(LOG_DEBUG,"position is %d\n",current_data_pos);
     
-    
-
     read_file_buffer_ptr = (char *) malloc(sizeof(char)*current_data_pos);
     if(read_file_buffer_ptr == NULL)
     {
@@ -296,8 +287,6 @@ int main(int argc, char *argv[])
     
     lseek(file_des,0,SEEK_SET);
     
-    //current_data_pos = lseek(file_des,0,SEEK_CUR);
-    //printf("m - position is %d\n",current_data_pos);
     read_status = read(file_des,read_file_buffer_ptr,current_data_pos);
     if(read_status == -1)
     {
@@ -308,7 +297,6 @@ int main(int argc, char *argv[])
     close(client_accept_fd);
       
     sig_status = sigprocmask(SIG_UNBLOCK, &x, NULL);
-    //printf("sig_status 2= %d\n",sig_status);
     if(sig_status == -1)
     {
       perror("sig_status - 2");
@@ -340,6 +328,7 @@ void *get_in_addr(struct sockaddr *sa)
 void socket_termination_signal_handler(int signo)
 {
   syslog(LOG_ERR,"Caught signal, exiting\n");
+  
   #if 0
   if(signo == SIGINT)
   {
@@ -369,7 +358,6 @@ void exit_handling()
   //delete the FILE created  
   int sig_status = 0;
   sig_status = sigprocmask(SIG_UNBLOCK, &x, NULL);
-  //printf("sig_status 2= %d\n",sig_status);
   if(sig_status == -1)
   {
     perror("sig_status - 2");
@@ -377,7 +365,7 @@ void exit_handling()
   
   int ret_status = 0;
   ret_status = remove(FILE_PATH_TO_WRITE);
-  printf("ret_status :: %d\n",ret_status);
+  syslog(LOG_DEBUG,"ret_status - remove:: %d\n",ret_status);
   
   close(server_socket_fd);
   close(file_des);
