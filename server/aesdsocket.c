@@ -41,7 +41,6 @@
 int file_des = 0;
 int server_socket_fd = 0;
 sigset_t x;
-int g_bytes_at_each_iteration[500] = {0};
 /* Function prototypes */
 void *get_in_addr(struct sockaddr *sa);
 void socket_termination_signal_handler(int signo);
@@ -295,6 +294,7 @@ int main(int argc, char *argv[])
     
     send(client_accept_fd,read_file_buffer_ptr,current_data_pos,0);
     close(client_accept_fd);
+    syslog(LOG_DEBUG, "Closed connection from %s", s);
       
     sig_status = sigprocmask(SIG_UNBLOCK, &x, NULL);
     if(sig_status == -1)
