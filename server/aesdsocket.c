@@ -35,7 +35,7 @@
 #define BACK_LOG			        (10)
 #define BUFFER_CAPACITY       (100)
 #define FILE_PATH_TO_WRITE    ("/var/tmp/aesdsocketdata")
-#define MULTIPLIER_FACTOR     (7)
+#define MULTIPLIER_FACTOR     (6)
 
 int file_des = 0;
 int server_socket_fd = 0;
@@ -155,6 +155,10 @@ int main(int argc, char const *argv[])
     close(i);
   }
   
+  open("/dev/null",O_RDWR);
+  dup(0);
+  dup(0);
+  
   #endif
   
  
@@ -184,9 +188,11 @@ int main(int argc, char const *argv[])
   int current_data_pos = 0;
   int read_status = 0;
   int no_of_bytes_rcvd = 0;
+  
   char* writer_file_buffer_ptr = NULL;
   int write_buffer_size = BUFFER_CAPACITY;
   writer_file_buffer_ptr = (char *)malloc(sizeof(char)*BUFFER_CAPACITY);
+  memset(writer_file_buffer_ptr,'\0',BUFFER_CAPACITY);
   if(writer_file_buffer_ptr == NULL)
   {
     perror("writer_file_buffer");
@@ -233,6 +239,7 @@ int main(int argc, char const *argv[])
         //counter++;
         //write_buffer_size = (counter*BUFFER_CAPACITY);
         //printf("write_buffer_size = %d\n",write_buffer_size);
+        printf(" ");//usleep(1000000);
         syslog(LOG_DEBUG,"write_buffer_size = %d\n",write_buffer_size);
         char* tmp_ptr = realloc(writer_file_buffer_ptr, write_buffer_size);
         
@@ -268,6 +275,7 @@ int main(int argc, char const *argv[])
     /* lseek required to bring to start position*/
     current_data_pos = lseek(file_des,0,SEEK_CUR);
     //printf("position is %d\n",current_data_pos);
+    
     
 
     read_file_buffer_ptr = (char *) malloc(sizeof(char)*current_data_pos);
