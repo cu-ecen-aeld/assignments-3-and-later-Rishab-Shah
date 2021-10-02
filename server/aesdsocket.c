@@ -23,7 +23,7 @@
 #include <signal.h> //signal
 #include <syslog.h> //syslog
 
-#define DAEMON_CODE     (0)
+#define DAEMON_CODE     (1)
 
 //redundant
 //#include <sys/types.h>
@@ -35,7 +35,7 @@
 #define BACK_LOG			        (10)
 #define BUFFER_CAPACITY       (100)
 #define FILE_PATH_TO_WRITE    ("/var/tmp/aesdsocketdata")
-#define MULTIPLIER_FACTOR     (6)
+#define MULTIPLIER_FACTOR     (7)
 
 int file_des = 0;
 int server_socket_fd = 0;
@@ -47,13 +47,23 @@ void socket_termination_signal_handler(int signo);
 void exit_handling();
 
 
-int main(int argc, char const *argv[])
+int main(int argc, char *argv[])
 {
-  #if DAEMON_CODE
+
+#if DAEMON_CODE
+  int set_daemon = 0;
+  if(argc > 1)
+  {
+    if((strcmp(argv[1],"-d")) == 0)
+    {
+      set_daemon = 1;
+      printf("here\n");
+    }
+  }
+#endif
+
   //daemon
-  pid_t sid = 0, pid = 0;
-  int i = 0;
-  #endif
+  pid_t pid = 0;
   openlog(NULL, 0, LOG_USER);
    
   /* Signal handler */ // Why? Running in while loop client connection
@@ -76,13 +86,11 @@ int main(int argc, char const *argv[])
   ret_sig_stat_2 = sigaddset(&x,SIGINT);
   ret_sig_stat_3 = sigaddset(&x,SIGTERM);
   
-  #if 1
   if( (ret_sig_stat_1 == -1) || (ret_sig_stat_2 == -1) || (ret_sig_stat_3 == -1)  ) 
   {
     perror("sig signal set");
     return -1;
   }
-  #endif
 
   /* Socket */  
   server_socket_fd = socket(AF_INET,SOCK_STREAM,0); 
@@ -118,50 +126,52 @@ int main(int argc, char const *argv[])
     perror("server bind fd");
     return -1;
   }
-  
+ #if DAEMON_CODE 
   /* Daemon creation*/
-  #if DAEMON_CODE
-  printf("daemon\n");
-  pid = fork();
-  if(pid == -1)
+  if(set_daemon == 1)
   {
-    perror("fork failed");
-    return -1;
+    printf("daemon\n");
+    pid = fork();
+    if(pid == -1)
+    {
+      perror("fork failed");
+      return -1;
+    }
+    else if(pid > 0)
+    {
+      //parent context
+      printf("CHILD PID = %d\n",pid);
+      exit(EXIT_SUCCESS);
+    }
+    
+    /* create new session and process grp*/
+    if(setsid()== -1)
+    {
+      perror("set sid failure");
+      return -1;
+    }
+    
+    //change cd to root
+    if(chdir("/") == -1)
+    {
+      perror("chdir");
+      return -1;
+    }
+    
+   //close all open files (in,out,error)
+    close(STDIN_FILENO);
+    close(STDOUT_FILENO);
+    close(STDERR_FILENO); 
+    //for(int i = 0; i<NR_OPEN; i++)
+    //{
+     // close(i);
+    //}
+    
+    open("/dev/null",O_RDWR);
+    dup(0);
+    dup(0);
   }
-  else if(pid > 0)
-  {
-    //parent context
-    printf("CHILD PID = %d\n",pid);
-    exit(EXIT_SUCCESS);
-  }
-  
-  /* create new session and process grp*/
-  if(setsid()== -1)
-  {
-    perror("set sid failure");
-    return -1;
-  }
-  
-  //change cd to root
-  if(chdir("/") == -1)
-  {
-    perror("chdir");
-    return -1;
-  }
-  
-  //close all open files (in,out,error)
-  for(int i = 0; i<NR_OPEN; i++)
-  {
-    close(i);
-  }
-  
-  open("/dev/null",O_RDWR);
-  dup(0);
-  dup(0);
-  
   #endif
-  
- 
   /* listen */
   int server_listen_fd = 0;
   
@@ -239,7 +249,7 @@ int main(int argc, char const *argv[])
         //counter++;
         //write_buffer_size = (counter*BUFFER_CAPACITY);
         //printf("write_buffer_size = %d\n",write_buffer_size);
-        printf(" ");//usleep(1000000);
+        //printf(" ");//usleep(1000000);
         syslog(LOG_DEBUG,"write_buffer_size = %d\n",write_buffer_size);
         char* tmp_ptr = realloc(writer_file_buffer_ptr, write_buffer_size);
         
@@ -329,6 +339,8 @@ void *get_in_addr(struct sockaddr *sa)
 
 void socket_termination_signal_handler(int signo)
 {
+  syslog(LOG_ERR,"Caught signal, exiting\n");
+  #if 0
   if(signo == SIGINT)
   {
     syslog(LOG_ERR, "caught SIGINT\n");
@@ -343,7 +355,7 @@ void socket_termination_signal_handler(int signo)
     syslog(LOG_ERR, "should not execute\n");
     exit(-1);
   }
-  
+  #endif
 
   exit_handling();
   exit(0);
