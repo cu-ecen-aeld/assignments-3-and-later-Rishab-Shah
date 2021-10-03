@@ -30,6 +30,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
+#include <sys/stat.h>
 
 #define PORT_NO				        (9000)
 #define PORT_BIND			        ("1234")
