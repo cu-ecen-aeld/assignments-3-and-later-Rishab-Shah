@@ -24,14 +24,12 @@
 #include <signal.h> //signal
 #include <syslog.h> //syslog
 
-#define DAEMON_CODE     (1)
-
-//redundant
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
 #include <sys/stat.h>
 
+#define DAEMON_CODE           (1)
 #define PORT_NO				        (9000)
 #define PORT_BIND			        ("1234")
 #define BACK_LOG			        (10)
@@ -48,6 +46,7 @@ void socket_termination_signal_handler(int signo);
 void exit_handling();
 
 
+/* Start of program */
 int main(int argc, char *argv[])
 {
 
@@ -80,12 +79,11 @@ int main(int argc, char *argv[])
   }
   
   /* Add signals to be masked */
-
   int ret_sig_stat_1 = 0,ret_sig_stat_2 = 0,ret_sig_stat_3 = 0;
+  
   ret_sig_stat_1 = sigemptyset(&x); 
   ret_sig_stat_2 = sigaddset(&x,SIGINT);
   ret_sig_stat_3 = sigaddset(&x,SIGTERM);
-  
   if( (ret_sig_stat_1 == -1) || (ret_sig_stat_2 == -1) || (ret_sig_stat_3 == -1)  ) 
   {
     perror("sig signal set");
@@ -260,7 +258,7 @@ int main(int argc, char *argv[])
       
       curr_location = curr_location + no_of_bytes_rcvd;
       
-      if(strstr(writer_file_buffer_ptr,"\n") != NULL /* || (no_of_bytes_rcvd == 0)*/)
+      if(strstr(writer_file_buffer_ptr,"\n") != NULL)
       {
         //Take a break when "\n" is detected (i..e termination conditon) or 
         //when the no of bytes received are zero
@@ -325,33 +323,15 @@ void *get_in_addr(struct sockaddr *sa)
   return &(((struct sockaddr_in6*)sa)->sin6_addr);
 }
 
-
+/* handling sigint and sigterm graceful exit */
 void socket_termination_signal_handler(int signo)
 {
-  syslog(LOG_ERR,"Caught signal, exiting\n");
-  
-  #if 0
-  if(signo == SIGINT)
-  {
-    syslog(LOG_ERR, "caught SIGINT\n");
-  }
-  else if(signo == SIGTERM)
-  {
-    syslog(LOG_ERR, "caught SIGTERM\n");
-  }
-  else
-  {
-    //should not execute
-    syslog(LOG_ERR, "should not execute\n");
-    exit(-1);
-  }
-  #endif
-
+  syslog(LOG_DEBUG,"Caught signal, exiting\n");
   exit_handling();
   exit(0);
 }
 
-
+/* commmon part handling for normal and sigint,sigterm exit */
 void exit_handling()
 { 
   //closed any pending operations
