@@ -27,9 +27,9 @@
 #define DAEMON_CODE     (1)
 
 //redundant
-//#include <sys/types.h>
-//#include <sys/socket.h>
-//#include <netdb.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netdb.h>
 
 #define PORT_NO				        (9000)
 #define PORT_BIND			        ("1234")
