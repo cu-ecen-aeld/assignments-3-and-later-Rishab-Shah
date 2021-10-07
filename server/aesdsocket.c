@@ -35,7 +35,7 @@
 #define BACK_LOG			        (10)
 #define BUFFER_CAPACITY       (100)
 #define FILE_PATH_TO_WRITE    ("/var/tmp/aesdsocketdata")
-#define MULTIPLIER_FACTOR     (7)
+#define MULTIPLIER_FACTOR     (3)
 
 int file_des = 0;
 int server_socket_fd = 0;
@@ -194,20 +194,23 @@ int main(int argc, char *argv[])
   int read_status = 0;
   int no_of_bytes_rcvd = 0;
   
-  char* writer_file_buffer_ptr = NULL;
-  int write_buffer_size = BUFFER_CAPACITY;
-  writer_file_buffer_ptr = (char *)malloc(sizeof(char)*BUFFER_CAPACITY);
-  memset(writer_file_buffer_ptr,'\0',BUFFER_CAPACITY);
-  if(writer_file_buffer_ptr == NULL)
-  {
-    perror("writer_file_buffer");
-  }
-  
-  char* read_file_buffer_ptr = NULL;
   bool run_status = true;
+  
+
   
   while(run_status)
   {    
+
+    char* read_file_buffer_ptr = NULL;
+    char* writer_file_buffer_ptr = NULL;
+    int write_buffer_size = BUFFER_CAPACITY;
+    writer_file_buffer_ptr = (char *)malloc(sizeof(char)*BUFFER_CAPACITY);
+    memset(writer_file_buffer_ptr,'\0',BUFFER_CAPACITY);
+    if(writer_file_buffer_ptr == NULL)
+    {
+      perror("writer_file_buffer");
+    }
+    
     /* Accept */
     int client_accept_fd = 0;
     socklen_t server_address_len = 0;
@@ -299,15 +302,16 @@ int main(int argc, char *argv[])
     if(sig_status == -1)
     {
       perror("sig_status - 2");
-    }   
-  }
-  
-  free(read_file_buffer_ptr);
-  read_file_buffer_ptr = NULL;
-      
-  free(writer_file_buffer_ptr);
-  writer_file_buffer_ptr = NULL;  
+    }  
+    
+    free(read_file_buffer_ptr);
+    read_file_buffer_ptr = NULL;
 
+    free(writer_file_buffer_ptr);
+    writer_file_buffer_ptr = NULL;  
+  }
+
+ 
   exit_handling();
   return 0;
 }
