@@ -40,6 +40,8 @@
 int file_des = 0;
 int server_socket_fd = 0;
 sigset_t x;
+
+int g_Signal_handler_detection = 0;
 /* Function prototypes */
 void *get_in_addr(struct sockaddr *sa);
 void socket_termination_signal_handler(int signo);
@@ -195,9 +197,7 @@ int main(int argc, char *argv[])
   int no_of_bytes_rcvd = 0;
   
   bool run_status = true;
-  
-
-  
+    
   while(run_status)
   {    
 
@@ -225,7 +225,12 @@ int main(int argc, char *argv[])
     if(client_accept_fd == -1)
     {
       perror("server_accept_fd");
-      continue;
+      if(g_Signal_handler_detection == 1)
+      {
+        printf("signal handler entered - 2\n");
+        exit_handling();
+        break;
+      }
     }
     
     /* sig status */
@@ -308,11 +313,11 @@ int main(int argc, char *argv[])
     read_file_buffer_ptr = NULL;
 
     free(writer_file_buffer_ptr);
-    writer_file_buffer_ptr = NULL;  
+    writer_file_buffer_ptr = NULL; 
+   
   }
 
- 
-  exit_handling();
+  printf("possible\n");
   return 0;
 }
 
@@ -331,8 +336,18 @@ void *get_in_addr(struct sockaddr *sa)
 void socket_termination_signal_handler(int signo)
 {
   syslog(LOG_DEBUG,"Caught signal, exiting\n");
-  exit_handling();
-  exit(0);
+  printf("in here\n");
+ 
+ #if 1
+  if(shutdown(server_socket_fd,SHUT_RDWR))
+  {
+    perror("Failed on shutdown");
+    syslog(LOG_ERR,"Could not close socket fd in signal handler: %s",strerror(errno));
+  }
+ #endif
+  
+  g_Signal_handler_detection = 1;
+
 }
 
 /* commmon part handling for normal and sigint,sigterm exit */
@@ -340,19 +355,22 @@ void exit_handling()
 { 
   //closed any pending operations
   //close open sockets
-  //delete the FILE created  
+  //delete the FILE created
+  #if 0
   int sig_status = 0;
   sig_status = sigprocmask(SIG_UNBLOCK, &x, NULL);
   if(sig_status == -1)
   {
     perror("sig_status - 2");
   }  
-  
+  #endif
+  printf("here bro !!!\n");
+  //close(server_socket_fd);  
   int ret_status = 0;
   ret_status = remove(FILE_PATH_TO_WRITE);
   syslog(LOG_DEBUG,"ret_status - remove:: %d\n",ret_status);
   
-  close(server_socket_fd);
+  //close(server_socket_fd);
   close(file_des);
   closelog();
 }
