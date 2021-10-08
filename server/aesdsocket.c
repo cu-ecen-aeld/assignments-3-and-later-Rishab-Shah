@@ -193,7 +193,7 @@ int main(int argc, char *argv[])
   
   /* local declarations */
   int current_data_pos = 0;
-  int read_status = 0;
+  //int read_status = 0;
   int no_of_bytes_rcvd = 0;
   
   bool run_status = true;
@@ -201,7 +201,6 @@ int main(int argc, char *argv[])
   while(run_status)
   {    
 
-    char* read_file_buffer_ptr = NULL;
     char* writer_file_buffer_ptr = NULL;
     int write_buffer_size = BUFFER_CAPACITY;
     writer_file_buffer_ptr = (char *)malloc(sizeof(char)*BUFFER_CAPACITY);
@@ -233,6 +232,7 @@ int main(int argc, char *argv[])
       }
     }
     
+    #if 1
     /* sig status */
     int sig_status = 0;
     sig_status = sigprocmask(SIG_BLOCK, &x, NULL);
@@ -240,6 +240,7 @@ int main(int argc, char *argv[])
     {
       perror("sig_status - 1");
     }
+    #endif
     
     /* read */
     int curr_location = 0;
@@ -281,8 +282,137 @@ int main(int argc, char *argv[])
       perror("file writing");
     }
     
-       
-    #if 1
+    /* present number of byts in file */
+    current_data_pos = lseek(file_des,0,SEEK_CUR);
+    //printf("data pos is %d\n",current_data_pos);
+    syslog(LOG_DEBUG,"position is %d\n",current_data_pos);
+    
+    lseek(file_des,0,SEEK_SET);
+    
+    //int count_new_line = 0;
+    int bytes_sent = 0;
+    int bytes_read = 0;
+    //int read_location = 0;
+    int read_buffer_loc = 0;
+    
+    char* read_file_buffer_ptr = NULL;
+    int read_buffer_size = BUFFER_CAPACITY;
+    
+    while(bytes_sent < current_data_pos)
+    {
+      read_buffer_loc = 0;
+      read_file_buffer_ptr = (char *)malloc(sizeof(char)*BUFFER_CAPACITY);
+      if(read_file_buffer_ptr == NULL)
+      {
+        perror("read malloc failure");
+      }
+      
+      while(1)
+      {
+        /* read one byte at a time for line check */
+        bytes_read = read(file_des,read_file_buffer_ptr + read_buffer_loc,sizeof(char));
+        if(bytes_read == -1)
+        {
+          perror("bytes_read");
+        }
+    
+        /* new line check */
+        if(strchr(read_file_buffer_ptr,'\n') != NULL)
+        {
+          read_buffer_loc = read_buffer_loc + bytes_read;
+          //printf("broke at %d\n",read_buffer_loc);
+          break;
+        }
+        
+        if(bytes_read+read_buffer_loc >= read_buffer_size)
+        {
+          read_buffer_size = read_buffer_size + current_data_pos;
+          //printf("new malloc is %d\n",read_buffer_size);
+          char* tmp_ptr = realloc(read_file_buffer_ptr, sizeof(char)*read_buffer_size);
+
+          if(tmp_ptr == NULL)
+          {
+            /* memory allocation failure. */
+            perror("read realloc failure");
+            free(read_file_buffer_ptr);
+            read_file_buffer_ptr = NULL;
+            break;
+          }
+          
+          read_file_buffer_ptr = tmp_ptr;
+         
+        }
+        
+        /* accumulation of one by one read */
+        read_buffer_loc = read_buffer_loc + bytes_read;
+        //printf("read buf location after addition = %d\n",read_buffer_loc);
+        #if 0
+        if(g_Signal_handler_detection == 1)
+        {
+          //printf("signal handler entered - 2\n");
+          exit_handling();
+          break;
+        }
+        #endif
+      }
+    
+      int send_status = 0;
+      send_status = send(client_accept_fd,read_file_buffer_ptr,read_buffer_loc,0);
+      if(send_status == -1)
+      { 
+        perror("error in sending to client");
+      }
+      //printf("send_status = %d and read_buffer_loc = %d\n",send_status,read_buffer_loc);
+
+      free(read_file_buffer_ptr);
+      read_file_buffer_ptr = NULL;
+      
+      bytes_sent = bytes_sent + read_buffer_loc;
+      //printf("bytes_sent= %d\n",bytes_sent);
+    }
+    #if 0
+    if(g_Signal_handler_detection == 1)
+    {
+      //printf("signal handler entered - 2\n");
+      exit_handling();
+      break;
+    }
+    #endif
+      
+    //printf("reached here \n");
+    close(client_accept_fd);
+    syslog(LOG_DEBUG, "Closed connection from %s", s);
+    
+    
+    sig_status = sigprocmask(SIG_UNBLOCK, &x, NULL);
+    if(sig_status == -1)
+    {
+      perror("sig_status - 2");
+    }
+    
+    
+    
+      #if 0
+      char new_line_buffer[1];
+      int new_line_detecion = 0;
+      new_line_detecion = read(file_des,new_line_buffer,sizeof(char));
+      printf("every iteration = %c,new_line_detecion = %d\n", new_line_buffer,new_line_detecion);
+      if(new_line_buffer != '\n')
+      {
+        count_new_line++;
+        printf("count_new_line = %d",count_new_line);
+      }
+      
+      if(count_new_line > 30)
+      {
+      
+        break;
+      
+      }
+      #endif
+    
+       #if 0
+
     /* lseek required to bring to start position*/
     current_data_pos = lseek(file_des,0,SEEK_CUR);
     syslog(LOG_DEBUG,"position is %d\n",current_data_pos);
@@ -304,18 +434,21 @@ int main(int argc, char *argv[])
     send(client_accept_fd,read_file_buffer_ptr,current_data_pos,0);
     close(client_accept_fd);
     syslog(LOG_DEBUG, "Closed connection from %s", s);
-      
+     
+    #if 1
     sig_status = sigprocmask(SIG_UNBLOCK, &x, NULL);
     if(sig_status == -1)
     {
       perror("sig_status - 2");
     }
-    
     #endif
+    
+
     
     free(read_file_buffer_ptr);
     read_file_buffer_ptr = NULL;
-
+    #endif
+    
     free(writer_file_buffer_ptr);
     writer_file_buffer_ptr = NULL; 
    
