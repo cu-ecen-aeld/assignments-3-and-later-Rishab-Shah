@@ -245,6 +245,14 @@ int main(int argc, char *argv[])
     int curr_location = 0;
     while((no_of_bytes_rcvd = (recv(client_accept_fd, writer_file_buffer_ptr + curr_location, BUFFER_CAPACITY, 0))))
     {
+      if(!no_of_bytes_rcvd || (strchr(writer_file_buffer_ptr, '\n') != NULL))
+      {
+        //Take a break when "\n" is detected (i..e termination conditon) or 
+        //when the no of bytes received are zero
+        curr_location = curr_location + no_of_bytes_rcvd;
+        break;
+      }
+    
       if(no_of_bytes_rcvd + curr_location >= write_buffer_size)
       {
         write_buffer_size *= MULTIPLIER_FACTOR; 
@@ -265,13 +273,6 @@ int main(int argc, char *argv[])
       }
       
       curr_location = curr_location + no_of_bytes_rcvd;
-      
-      if(strstr(writer_file_buffer_ptr,"\n") != NULL)
-      {
-        //Take a break when "\n" is detected (i..e termination conditon) or 
-        //when the no of bytes received are zero
-        break;
-      }
     }
     
     ret_status = write(file_des,writer_file_buffer_ptr,curr_location);
@@ -359,7 +360,6 @@ int main(int argc, char *argv[])
     close(client_accept_fd);
     syslog(LOG_DEBUG, "Closed connection from %s", s);
     
-    
     sig_status = sigprocmask(SIG_UNBLOCK, &x, NULL);
     if(sig_status == -1)
     {
@@ -414,4 +414,6 @@ void exit_handling()
   close(file_des);
   closelog();
 }
+
+
 /* EOF */
