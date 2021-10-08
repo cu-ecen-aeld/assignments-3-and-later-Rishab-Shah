@@ -322,7 +322,7 @@ int main(int argc, char *argv[])
         
         if(bytes_read+read_buffer_loc >= read_buffer_size)
         {
-          read_buffer_size = read_buffer_size + current_data_pos;
+          read_buffer_size = read_buffer_size + (current_data_pos-read_buffer_loc);
           //printf("new malloc is %d\n",read_buffer_size);
           char* tmp_ptr = realloc(read_file_buffer_ptr, sizeof(char)*read_buffer_size);
 
