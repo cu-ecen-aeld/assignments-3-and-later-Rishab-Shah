@@ -224,7 +224,7 @@ int main(int argc, char *argv[])
     syslog(LOG_DEBUG, "Accepted connection from %s", s);
     if(client_accept_fd == -1)
     {
-      //perror("server_accept_fd");
+      perror("client_accept_fd");
       if(g_Signal_handler_detection == 1)
       {
         //printf("signal handler entered - 2\n");
@@ -281,6 +281,8 @@ int main(int argc, char *argv[])
       perror("file writing");
     }
     
+       
+    #if 1
     /* lseek required to bring to start position*/
     current_data_pos = lseek(file_des,0,SEEK_CUR);
     syslog(LOG_DEBUG,"position is %d\n",current_data_pos);
@@ -307,7 +309,9 @@ int main(int argc, char *argv[])
     if(sig_status == -1)
     {
       perror("sig_status - 2");
-    }  
+    }
+    
+    #endif
     
     free(read_file_buffer_ptr);
     read_file_buffer_ptr = NULL;
@@ -317,7 +321,6 @@ int main(int argc, char *argv[])
    
   }
 
-  //printf("possible\n");
   return 0;
 }
 
@@ -336,16 +339,13 @@ void *get_in_addr(struct sockaddr *sa)
 void socket_termination_signal_handler(int signo)
 {
   syslog(LOG_DEBUG,"Caught signal, exiting\n");
-  //printf("in here\n");
  
- #if 1
   if(shutdown(server_socket_fd,SHUT_RDWR))
   {
     perror("Failed on shutdown");
     syslog(LOG_ERR,"Could not close socket fd in signal handler: %s",strerror(errno));
   }
- #endif
-  
+
   g_Signal_handler_detection = 1;
 
 }
@@ -356,16 +356,6 @@ void exit_handling()
   //closed any pending operations
   //close open sockets
   //delete the FILE created
-  #if 0
-  int sig_status = 0;
-  sig_status = sigprocmask(SIG_UNBLOCK, &x, NULL);
-  if(sig_status == -1)
-  {
-    perror("sig_status - 2");
-  }  
-  #endif
-  //printf("here bro !!!\n");
-  //close(server_socket_fd);  
   int ret_status = 0;
   ret_status = remove(FILE_PATH_TO_WRITE);
   syslog(LOG_DEBUG,"ret_status - remove:: %d\n",ret_status);
