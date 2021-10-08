@@ -224,10 +224,10 @@ int main(int argc, char *argv[])
     syslog(LOG_DEBUG, "Accepted connection from %s", s);
     if(client_accept_fd == -1)
     {
-      perror("server_accept_fd");
+      //perror("server_accept_fd");
       if(g_Signal_handler_detection == 1)
       {
-        printf("signal handler entered - 2\n");
+        //printf("signal handler entered - 2\n");
         exit_handling();
         break;
       }
@@ -317,7 +317,7 @@ int main(int argc, char *argv[])
    
   }
 
-  printf("possible\n");
+  //printf("possible\n");
   return 0;
 }
 
@@ -336,7 +336,7 @@ void *get_in_addr(struct sockaddr *sa)
 void socket_termination_signal_handler(int signo)
 {
   syslog(LOG_DEBUG,"Caught signal, exiting\n");
-  printf("in here\n");
+  //printf("in here\n");
  
  #if 1
   if(shutdown(server_socket_fd,SHUT_RDWR))
@@ -364,13 +364,13 @@ void exit_handling()
     perror("sig_status - 2");
   }  
   #endif
-  printf("here bro !!!\n");
+  //printf("here bro !!!\n");
   //close(server_socket_fd);  
   int ret_status = 0;
   ret_status = remove(FILE_PATH_TO_WRITE);
   syslog(LOG_DEBUG,"ret_status - remove:: %d\n",ret_status);
   
-  //close(server_socket_fd);
+  close(server_socket_fd);
   close(file_des);
   closelog();
 }
