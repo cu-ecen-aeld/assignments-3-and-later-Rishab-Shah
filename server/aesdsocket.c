@@ -52,6 +52,7 @@ void exit_handling();
 int main(int argc, char *argv[])
 {
 
+  syslog(LOG_DEBUG,"-------------START OF PROGRAM-------------------");
 #if DAEMON_CODE
   int set_daemon = 0;
   if(argc > 1)
@@ -200,16 +201,18 @@ int main(int argc, char *argv[])
     
   while(run_status)
   {    
-
+    syslog(LOG_DEBUG,"run_status");
     char* writer_file_buffer_ptr = NULL;
     int write_buffer_size = BUFFER_CAPACITY;
     writer_file_buffer_ptr = (char *)malloc(sizeof(char)*BUFFER_CAPACITY);
     memset(writer_file_buffer_ptr,'\0',BUFFER_CAPACITY);
     if(writer_file_buffer_ptr == NULL)
     {
+      syslog(LOG_ERR,"writer_file_buffer_ptr failure\n");
       perror("writer_file_buffer");
     }
     
+    syslog(LOG_DEBUG,"run_status - 2. SHould not be at last");
     /* Accept */
     int client_accept_fd = 0;
     socklen_t server_address_len = 0;
@@ -230,7 +233,7 @@ int main(int argc, char *argv[])
         break;
       }
     }
-    
+
     #if 1
     /* sig status */
     int sig_status = 0;
@@ -240,7 +243,7 @@ int main(int argc, char *argv[])
       perror("sig_status - 1");
     }
     #endif
-    
+    syslog(LOG_DEBUG,"client_accept_fd completed");
     /* read */
     int curr_location = 0;
     while((no_of_bytes_rcvd = (recv(client_accept_fd, writer_file_buffer_ptr + curr_location, BUFFER_CAPACITY, 0))))
@@ -250,6 +253,7 @@ int main(int argc, char *argv[])
         //Take a break when "\n" is detected (i..e termination conditon) or 
         //when the no of bytes received are zero
         curr_location = curr_location + no_of_bytes_rcvd;
+        syslog(LOG_DEBUG,"(break -write)curr_location at exit = %d\n",curr_location);
         break;
       }
     
@@ -263,6 +267,7 @@ int main(int argc, char *argv[])
         if(tmp_ptr == NULL)
         {
           /* memory allocation failure. */
+          syslog(LOG_ERR,"realloc failure");
           perror("realloc failure");
           free(writer_file_buffer_ptr);
           writer_file_buffer_ptr = NULL;
@@ -270,12 +275,15 @@ int main(int argc, char *argv[])
           break;
         }
          writer_file_buffer_ptr = tmp_ptr;
+         syslog(LOG_DEBUG,"assignment succesful after realloc");
       }
       
       curr_location = curr_location + no_of_bytes_rcvd;
+      //syslog(LOG_DEBUG,"(write)curr_location  = %d\n",curr_location);
     }
     
     ret_status = write(file_des,writer_file_buffer_ptr,curr_location);
+    syslog(LOG_DEBUG,"return status  = %d\n",ret_status);
     if(ret_status == -1)
     {
       syslog(LOG_ERR,"file writing failure\n");
@@ -295,13 +303,16 @@ int main(int argc, char *argv[])
     char* read_file_buffer_ptr = NULL;
     int read_buffer_size = BUFFER_CAPACITY;
     
+   
     while(bytes_sent < current_data_pos)
     {
+      syslog(LOG_ERR,"read iteration\n");
       read_buffer_loc = 0;
       read_file_buffer_ptr = (char *)malloc(sizeof(char)*BUFFER_CAPACITY);
       if(read_file_buffer_ptr == NULL)
       {
         perror("read malloc failure");
+        syslog(LOG_DEBUG,"read alloc failure");
       }
       
       while(1)
@@ -311,12 +322,14 @@ int main(int argc, char *argv[])
         if(bytes_read == -1)
         {
           perror("bytes_read");
+          syslog(LOG_DEBUG,"bytes_read ilure");
         }
     
         /* new line check */
         if(strchr(read_file_buffer_ptr,'\n') != NULL)
         {
           read_buffer_loc = read_buffer_loc + bytes_read;
+          syslog(LOG_DEBUG,"(break -read)curr_location at exit = %d\n",read_buffer_loc);
           break;
         }
         
@@ -330,17 +343,20 @@ int main(int argc, char *argv[])
           {
             /* memory allocation failure. */
             perror("read realloc failure");
+            syslog(LOG_DEBUG,"read realloc failure");
             free(read_file_buffer_ptr);
             read_file_buffer_ptr = NULL;
             break;
           }
           
           read_file_buffer_ptr = tmp_ptr;
+          syslog(LOG_DEBUG,"read assignmnt of tmpptr");
          
         }
         
         /* accumulation of one by one read */
         read_buffer_loc = read_buffer_loc + bytes_read;
+       //syslog(LOG_DEBUG,"(read)curr_location at exit = %d\n",read_buffer_loc);
 
       }
     
@@ -355,6 +371,7 @@ int main(int argc, char *argv[])
       read_file_buffer_ptr = NULL;
       
       bytes_sent = bytes_sent + read_buffer_loc;
+      syslog(LOG_DEBUG,"bytes_sent = %d\n",bytes_sent);
     }
 
     close(client_accept_fd);
@@ -368,9 +385,12 @@ int main(int argc, char *argv[])
         
     free(writer_file_buffer_ptr);
     writer_file_buffer_ptr = NULL; 
+    syslog(LOG_DEBUG,"writer_file_buffer_ptr free\n");
    
   }
 
+  syslog(LOG_DEBUG,"exit reached\n");
+  syslog(LOG_DEBUG,"-------------END OF PROGRAM-------------------");
   return 0;
 }
 
@@ -388,6 +408,7 @@ void *get_in_addr(struct sockaddr *sa)
 /* handling sigint and sigterm graceful exit */
 void socket_termination_signal_handler(int signo)
 {
+
   syslog(LOG_DEBUG,"Caught signal, exiting\n");
  
   if(shutdown(server_socket_fd,SHUT_RDWR))
@@ -406,6 +427,7 @@ void exit_handling()
   //closed any pending operations
   //close open sockets
   //delete the FILE created
+  syslog(LOG_DEBUG,"exit_handling");
   int ret_status = 0;
   ret_status = remove(FILE_PATH_TO_WRITE);
   syslog(LOG_DEBUG,"ret_status - remove:: %d\n",ret_status);
