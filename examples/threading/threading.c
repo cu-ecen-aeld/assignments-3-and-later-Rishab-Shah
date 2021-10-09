@@ -69,7 +69,6 @@ bool start_thread_obtaining_mutex(pthread_t *thread, pthread_mutex_t *mutex, int
     if(ret_status != 0)
     {
 	    perror("error");
-	    exit(-1);
     }
 
     return true;
