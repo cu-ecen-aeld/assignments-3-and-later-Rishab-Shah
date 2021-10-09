@@ -202,15 +202,7 @@ int main(int argc, char *argv[])
   while(run_status)
   {    
     syslog(LOG_DEBUG,"run_status");
-    char* writer_file_buffer_ptr = NULL;
-    int write_buffer_size = BUFFER_CAPACITY;
-    writer_file_buffer_ptr = (char *)malloc(sizeof(char)*BUFFER_CAPACITY);
-    memset(writer_file_buffer_ptr,'\0',BUFFER_CAPACITY);
-    if(writer_file_buffer_ptr == NULL)
-    {
-      syslog(LOG_ERR,"writer_file_buffer_ptr failure\n");
-      perror("writer_file_buffer");
-    }
+    
     
     syslog(LOG_DEBUG,"run_status - 2. SHould not be at last");
     /* Accept */
@@ -244,6 +236,18 @@ int main(int argc, char *argv[])
     }
     #endif
     syslog(LOG_DEBUG,"client_accept_fd completed");
+    
+    char* writer_file_buffer_ptr = NULL;
+    int write_buffer_size = BUFFER_CAPACITY;
+    writer_file_buffer_ptr = (char *)malloc(sizeof(char)*BUFFER_CAPACITY);
+    memset(writer_file_buffer_ptr,'\0',BUFFER_CAPACITY);
+    if(writer_file_buffer_ptr == NULL)
+    {
+      syslog(LOG_ERR,"writer_file_buffer_ptr failure\n");
+      perror("writer_file_buffer");
+    }
+    
+    
     /* read */
     int curr_location = 0;
     while((no_of_bytes_rcvd = (recv(client_accept_fd, writer_file_buffer_ptr + curr_location, BUFFER_CAPACITY, 0))))
@@ -362,6 +366,7 @@ int main(int argc, char *argv[])
     
       int send_status = 0;
       send_status = send(client_accept_fd,read_file_buffer_ptr,read_buffer_loc,0);
+      syslog(LOG_DEBUG,"send_status (send return) = %d\n",send_status);
       if(send_status == -1)
       { 
         perror("error in sending to client");
@@ -371,7 +376,7 @@ int main(int argc, char *argv[])
       read_file_buffer_ptr = NULL;
       
       bytes_sent = bytes_sent + read_buffer_loc;
-      syslog(LOG_DEBUG,"bytes_sent = %d\n",bytes_sent);
+      syslog(LOG_DEBUG,"bytes_sent variable value = %d\n",bytes_sent);
     }
 
     close(client_accept_fd);
