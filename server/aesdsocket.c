@@ -10,6 +10,9 @@
  * https://blog.taborkelly.net/programming/c/2016/01/09/sys-queue-example.html
  * https://www.freebsd.org/cgi/man.cgi?query=queue&apropos=0&sektion=0&manpath=FreeBSD+10.2-RELEASE&arch=default&format=html
  * http://ecee.colorado.edu/~ecen5623/ecen/ex/Linux/rt_simplethread/pthread.c
+ * https://github.com/cu-ecen-aeld/aesd-lectures/blob/master/lecture9/timer_thread.c
+ * https://www.tutorialspoint.com/c_standard_library/c_function_strftime.htm
+ * https://man7.org/linux/man-pages/man3/strftime.3.html
  * Linux notes for reference
  * Beej
  * Author : Rishab Shah
@@ -36,6 +39,10 @@
 #include <pthread.h>    //threads
 #include <sys/queue.h>  //linked list to store thread id's
 
+#include <time.h>
+#include <sys/time.h>
+
+
 #define DAEMON_CODE           (1)
 #define PORT_NO				        (9000)
 #define PORT_BIND			        ("1234")
@@ -43,12 +50,12 @@
 #define BUFFER_CAPACITY       (100)
 #define FILE_PATH_TO_WRITE    ("/var/tmp/aesdsocketdata")
 #define MULTIPLIER_FACTOR     (2)
+#define TIME_BUFFER           (120)
 
 
 typedef struct
 {
     pthread_t pt_thread;            //thread paramaters
-    //int threadIdx;                  //for storing the thread ID
     int thread_accept_fd;           //for storing the respective client accept fd 
     bool thread_completion_status;  //to keep track of detachment, success or not
 }threadParams_t;
@@ -62,7 +69,7 @@ typedef struct slist_data_s
 int file_des = 0;
 int server_socket_fd = 0;
 int client_accept_fd = 0;
-sigset_t x;
+
 int g_Signal_handler_detection = 0;
 pthread_mutex_t data_lock;
 
@@ -71,24 +78,41 @@ void *get_in_addr(struct sockaddr *sa);
 void socket_termination_signal_handler(int signo);
 void exit_handling();
 void *recv_client_send_server(void *thread_parameters);
+static void timer_thread();
+
+
+/**
+* set @param result with @param ts_1 + @param ts_2
+*/
+static inline void timespec_add( struct timespec *result,
+                        const struct timespec *ts_1, const struct timespec *ts_2)
+{
+    result->tv_sec = ts_1->tv_sec + ts_2->tv_sec;
+    result->tv_nsec = ts_1->tv_nsec + ts_2->tv_nsec;
+    if( result->tv_nsec > 1000000000L ) {
+        result->tv_nsec -= 1000000000L;
+        result->tv_sec ++;
+    }
+}
 
 void *recv_client_send_server(void *thread_parameters)
 {
     threadParams_t *l_tp = (threadParams_t*) thread_parameters;
     //printf("accpet for thread %d\n",l_tp->thread_accept_fd);
     syslog(LOG_DEBUG, "client fd rcvd is %d",l_tp->thread_accept_fd);
-   
-    #if 1
-    /* sig status */
-    int sig_status = 0;
-    sig_status = sigprocmask(SIG_BLOCK, &x, NULL);
-    if(sig_status == -1)
+    
+    /* Add signals to be masked */
+    sigset_t x; // for each thread a signal handler
+    int ret_sig_stat_1 = 0,ret_sig_stat_2 = 0,ret_sig_stat_3 = 0;
+    ret_sig_stat_1 = sigemptyset(&x); 
+    ret_sig_stat_2 = sigaddset(&x,SIGINT);
+    ret_sig_stat_3 = sigaddset(&x,SIGTERM);
+    if( (ret_sig_stat_1 == -1) || (ret_sig_stat_2 == -1) || (ret_sig_stat_3 == -1)  ) 
     {
+      perror("sig signal set");
       pthread_exit(l_tp);
-      perror("sig_status - 1");
     }
-    #endif
-
+   
     /* local declarations */
     int current_data_pos = 0; int no_of_bytes_rcvd = 0;
     char temp_buffer[BUFFER_CAPACITY];
@@ -113,6 +137,17 @@ void *recv_client_send_server(void *thread_parameters)
     int send_status = 0;
     int exit_write_loop = 0;
 
+    #if 1
+    /* sig status */
+    int sig_status = 0;
+    sig_status = sigprocmask(SIG_BLOCK, &x, NULL);
+    if(sig_status == -1)
+    {
+      pthread_exit(l_tp);
+      perror("sig_status - 1");
+    }
+    #endif
+    
     //changed logic to work only on temp_buffer from previous writer_file_buffer_ptr.
     //writer_file_buffer_ptr caused 40,000 errors as a memory beyind its scope was accessed.
     //converted to do to avoid multiple break conditions and variable handling
@@ -162,7 +197,7 @@ void *recv_client_send_server(void *thread_parameters)
     
     int ret_status = 0;
     ret_status = write(file_des,writer_file_buffer_ptr,curr_location);
-    syslog(LOG_DEBUG,"return status  = %d\n",ret_status);
+    //syslog(LOG_DEBUG,"return status  = %d\n",ret_status);
     if(ret_status == -1)
     {
       syslog(LOG_ERR,"file writing failure\n");
@@ -256,24 +291,76 @@ void *recv_client_send_server(void *thread_parameters)
     }
 
     close(l_tp->thread_accept_fd);
-    #if 0
+    
+    #if 1
     sig_status = sigprocmask(SIG_UNBLOCK, &x, NULL);
     if(sig_status == -1)
     {
       perror("sig_status - 2");
     }
     #endif  
-     
+    
     free(writer_file_buffer_ptr);
     writer_file_buffer_ptr = NULL;
     
     l_tp->thread_completion_status = true;
     pthread_exit(l_tp);
-    //return l_tp;
 }
 
 
+//https://www.tutorialspoint.com/c_standard_library/c_function_strftime.htm
+static void timer_thread()
+{
+    time_t rawtime;
+    struct tm *info;
+    char *time_stamp = (char *)malloc(TIME_BUFFER*sizeof(char));
+    if(time_stamp == NULL)
+    {
+      perror("time_stamp failed");
+      pthread_exit(NULL);
+      
+    }
 
+    time(&rawtime);
+    info = localtime(&rawtime);
+    
+    int ret_bytes = 0; 
+    ret_bytes = strftime(time_stamp,TIME_BUFFER,"timestamp:%Y %b %a %d %H:%M:%S%n", info);
+    if(ret_bytes == 0)
+    {
+      perror("strftime failed");
+      free(time_stamp);
+      pthread_exit(NULL);
+    }
+    
+    if(pthread_mutex_lock(&data_lock) != 0)
+    {
+      perror("lock not acquired");
+      free(time_stamp);
+      pthread_exit(NULL);
+    }
+    
+    int bytes_written= 0;
+    bytes_written = write(file_des, time_stamp, ret_bytes);
+    if(bytes_written == -1)
+    {
+      syslog(LOG_ERR,"bytes_writtenfailure\n");
+      perror("file writing");
+      free(time_stamp);
+      pthread_exit(NULL);
+    }
+    
+    if(pthread_mutex_unlock(&data_lock) != 0)
+    {
+      perror("lock not acquired");
+      free(time_stamp);
+      pthread_exit(NULL);
+    }
+    
+    free(time_stamp);
+    //pthread_exit(NULL);
+    
+}
 
 
 
@@ -294,6 +381,13 @@ void *recv_client_send_server(void *thread_parameters)
 /* Start of program */
 int main(int argc, char *argv[])
 {
+  //for both context
+  struct sigevent sev;
+  struct timespec start_time;
+  int clock_id = CLOCK_MONOTONIC;
+	struct itimerspec itimerspec;
+  timer_t timerid;
+  
   syslog(LOG_DEBUG,"-------------START OF PROGRAM-------------------");
 #if DAEMON_CODE
   int set_daemon = 0;
@@ -336,18 +430,7 @@ int main(int argc, char *argv[])
     return -1;
   }
   
-  /* Add signals to be masked */
-  int ret_sig_stat_1 = 0,ret_sig_stat_2 = 0,ret_sig_stat_3 = 0;
-  
-  ret_sig_stat_1 = sigemptyset(&x); 
-  ret_sig_stat_2 = sigaddset(&x,SIGINT);
-  ret_sig_stat_3 = sigaddset(&x,SIGTERM);
-  if( (ret_sig_stat_1 == -1) || (ret_sig_stat_2 == -1) || (ret_sig_stat_3 == -1)  ) 
-  {
-    perror("sig signal set");
-    return -1;
-  }
-
+ 
   /* Socket */  
   server_socket_fd = socket(AF_INET,SOCK_STREAM,0);
   if(server_socket_fd == -1)
@@ -360,7 +443,7 @@ int main(int argc, char *argv[])
   int server_setsockopt_fd = 0;
   int opt = 1;
     
-  // Forcefully attaching socket to the port 8080
+  // Forcefully attaching socket to the port 9000
   server_setsockopt_fd = setsockopt(server_socket_fd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT,
                                         &opt, sizeof(opt));
   if(server_setsockopt_fd == -1)
@@ -428,10 +511,43 @@ int main(int argc, char *argv[])
   }
   #endif
   
+  
+
   //wrte code below as post this everything will be in one context
   //writing above may likely be it in another context
-  /* Init all the variables */
-  //In parent context and daemon mode
+  //indicatest that the timer should start only in one context
+  //either parent or child (pid = 00) child and daemon = 0 (parent)
+  if((set_daemon == 0 ) || (pid = 0))
+  {
+    //https://github.com/cu-ecen-aeld/aesd-lectures/blob/master/lecture9/timer_thread.c
+    memset(&sev,0,sizeof(struct sigevent));
+    //function for setting up timer and 
+    sev.sigev_notify = SIGEV_THREAD;
+    sev.sigev_notify_function = timer_thread;
+    
+    #if 1
+    if(timer_create(clock_id,&sev,&timerid) != 0 )
+    {
+      perror("timer_create error");
+      return -1;
+    } 
+    #endif
+    if(clock_gettime(clock_id,&start_time) != 0 )
+    {
+      perror("clock_gettime error");
+      return -1;
+    } 
+    
+    itimerspec.it_interval.tv_sec = 10;
+    itimerspec.it_interval.tv_nsec = 1000000; //extra delay to margin
+    timespec_add(&itimerspec.it_value,&start_time,&itimerspec.it_interval);
+    
+    if(timer_settime(timerid, TIMER_ABSTIME, &itimerspec, NULL ) != 0 )
+    {
+      perror("timer_settime error");
+      return -1;
+    } 
+  }
 
 
   
@@ -580,16 +696,6 @@ void socket_termination_signal_handler(int signo)
 /* commmon part handling for normal and sigint,sigterm exit */
 void exit_handling()
 { 
-#if 0
-  SLIST_FOREACH(datap,&head,entries)
-  {
-    if((datap->thread_data).thread_completion_status == true)
-    { 
-      pthread_join((datap->thread_data).pt_thread, NULL);
-    }
-  }
-  
-#endif
   
   //closed any pending operations
   //close open sockets
@@ -610,6 +716,9 @@ void exit_handling()
   pthread_mutex_destroy(&data_lock);
   
 }
+
+
+
 
 
 /* EOF */

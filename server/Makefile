@@ -1,7 +1,7 @@
 CC = $(CROSS_COMPILE)gcc
 CROSS_COMPILE =
-CFFLAGS = -g -Wall
-LDFLAGS = -lrt -pthread
+CFFLAGS = -Wall -Werror -g
+LDFLAGS = -pthread -lrt
 
 all : aesdsocket.o
 	$(CC) $(CFFLAGS) $(LDFLAGS) -o aesdsocket aesdsocket.o
