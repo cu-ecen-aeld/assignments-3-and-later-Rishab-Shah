@@ -1,6 +1,6 @@
 CC = $(CROSS_COMPILE)gcc
 CROSS_COMPILE =
-CFFLAGS = -g -Wall -Werror
+CFFLAGS = -g -Wall
 LDFLAGS = -lrt -pthread
 
 all : aesdsocket.o
