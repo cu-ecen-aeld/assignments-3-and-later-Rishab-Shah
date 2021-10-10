@@ -45,8 +45,8 @@
 typedef struct
 {
     //int threadIdx;
-    int thread_accept_fd;
-    bool thread_completion_status;
+    int thread_accept_fd;           //for stroign the thread ID
+    bool thread_completion_status;  //to keep track of detachment
 }threadParams_t;
 
 struct slist_data_s
@@ -65,7 +65,6 @@ int g_Signal_handler_detection = 0;
 void *get_in_addr(struct sockaddr *sa);
 void socket_termination_signal_handler(int signo);
 void exit_handling();
-
 
 /* Start of program */
 int main(int argc, char *argv[])
@@ -216,7 +215,6 @@ int main(int argc, char *argv[])
   
   /* local declarations */
   int current_data_pos = 0;
-  //int read_status = 0;
   int no_of_bytes_rcvd = 0;
   bool run_status = true;
   
@@ -279,7 +277,6 @@ int main(int argc, char *argv[])
       
     /* read */
     int curr_location = 0;
-    //char *new_line_check_write = NULL;
     
     int read_buffer_size = BUFFER_CAPACITY;
     char *new_line_read = NULL;
@@ -489,9 +486,6 @@ void exit_handling()
   closelog();
   
 }
-
-
-
 
 
 /* EOF */
