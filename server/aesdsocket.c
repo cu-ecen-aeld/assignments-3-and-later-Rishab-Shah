@@ -10,7 +10,6 @@
  * https://www.freebsd.org/cgi/man.cgi?query=queue&apropos=0&sektion=0&manpath=FreeBSD+10.2-RELEASE&arch=default&format=html
  * Linux notes for reference
  * Author : Rishab Shah
- BACKUP
  */
 
 //standard headers required
@@ -30,7 +29,6 @@
 #include <sys/socket.h>
 #include <netdb.h>
 #include <sys/stat.h>
-#include <netinet/in.h>
 
 #include <pthread.h>    //threads
 #include <sys/queue.h>  //linked list to store thread id's
@@ -46,7 +44,9 @@
 
 typedef struct
 {
-    int threadIdx;
+    //int threadIdx;
+    int thread_accept_fd;
+    bool thread_completion_status;
 }threadParams_t;
 
 struct slist_data_s
@@ -57,6 +57,7 @@ struct slist_data_s
 
 int file_des = 0;
 int server_socket_fd = 0;
+int client_accept_fd = 0;
 sigset_t x;
 int g_Signal_handler_detection = 0;
 
@@ -210,7 +211,7 @@ int main(int argc, char *argv[])
   {
     syslog(LOG_ERR,"file creation,opening failure\n");
     perror("file creation");
-    exit(1);
+    return -1;
   }
   
   /* local declarations */
@@ -223,10 +224,16 @@ int main(int argc, char *argv[])
   memset(temp_buffer, '\0', BUFFER_CAPACITY);
     
   while(run_status)
-  {    
+  { 
+    if(g_Signal_handler_detection == 1)
+    {
+      exit_handling();
+      break;
+    }  
+  
     syslog(LOG_DEBUG,"run_status");
     /* Accept */
-    int client_accept_fd = 0;
+
     socklen_t server_address_len = 0;
     server_address_len = sizeof(server_address);
     char s[INET6_ADDRSTRLEN];
@@ -238,12 +245,13 @@ int main(int argc, char *argv[])
     syslog(LOG_DEBUG, "Accepted connection from %s", s);
     if(client_accept_fd == -1)
     {
+      syslog(LOG_DEBUG, "executed");
       perror("client_accept_fd");
       if(g_Signal_handler_detection == 1)
       {
         exit_handling();
         break;
-      }
+      }  
     }
     
     #if 1
@@ -402,7 +410,7 @@ int main(int argc, char *argv[])
       store_previous_new_line = read_buffer_loc;
       
       send_status = send(client_accept_fd,read_file_buffer_ptr,read_buffer_loc,0);
-      syslog(LOG_DEBUG,"send_status (send return) = %d\n",send_status);
+      //syslog(LOG_DEBUG,"send_status (send return) = %d\n",send_status);
       if(send_status == -1)
       { 
         perror("error in sending to client");
@@ -412,7 +420,7 @@ int main(int argc, char *argv[])
       read_file_buffer_ptr = NULL;
       
       bytes_sent = bytes_sent + read_buffer_loc;
-      syslog(LOG_DEBUG,"bytes_sent variable value = %d\n",bytes_sent);
+      //syslog(LOG_DEBUG,"bytes_sent variable value = %d\n",bytes_sent);
     }
 
     #if 1
@@ -475,6 +483,7 @@ void exit_handling()
   ret_status = remove(FILE_PATH_TO_WRITE);
   syslog(LOG_DEBUG,"ret_status - remove:: %d\n",ret_status);
   
+  close(client_accept_fd);
   close(server_socket_fd);
   close(file_des);
   closelog();
