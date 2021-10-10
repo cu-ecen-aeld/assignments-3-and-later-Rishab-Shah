@@ -223,9 +223,9 @@ void *recv_client_send_server(void *thread_parameters)
       //syslog(LOG_ERR,"read iteration\n");
       read_buffer_loc = 0;
         
-      char* read_file_buffer_ptr = NULL;
+      char* read_file_buffer_ptr = NULL; 
       read_file_buffer_ptr = (char *)malloc(sizeof(char)*BUFFER_CAPACITY);
-
+      
       if(read_file_buffer_ptr == NULL)
       {
         perror("read malloc failure");
@@ -358,7 +358,7 @@ static void timer_thread()
     }
     
     free(time_stamp);
-    //pthread_exit(NULL);
+    pthread_exit(NULL);
     
 }
 
@@ -531,7 +531,7 @@ int main(int argc, char *argv[])
       perror("timer_create error");
       return -1;
     } 
-    #endif
+ 
     if(clock_gettime(clock_id,&start_time) != 0 )
     {
       perror("clock_gettime error");
@@ -547,6 +547,7 @@ int main(int argc, char *argv[])
       perror("timer_settime error");
       return -1;
     } 
+       #endif
   }
 
 
@@ -645,6 +646,11 @@ int main(int argc, char *argv[])
     syslog(LOG_DEBUG,"writer_file_buffer_ptr free\n");
    
   }
+  
+      SLIST_FOREACH(datap,&head,entries)
+    {
+        pthread_join((datap->thread_data).pt_thread, NULL);
+    }
   
   close(client_accept_fd);
   

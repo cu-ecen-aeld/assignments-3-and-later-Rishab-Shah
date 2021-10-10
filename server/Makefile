@@ -1,13 +1,13 @@
 CC = $(CROSS_COMPILE)gcc
 CROSS_COMPILE =
 CFFLAGS = -Wall -Werror -g
-LDFLAGS = -pthread -lrt
+LDFLAGS = -lpthread -lrt
 
 all : aesdsocket.o
-	$(CC) $(CFFLAGS) $(LDFLAGS) -o aesdsocket aesdsocket.o
+	$(CC) $(CFFLAGS) -o aesdsocket aesdsocket.o $(LDFLAGS)
 
 aesdsocket.o  : aesdsocket.c
-	$(CC) $(CFFLAGS) $(LDFLAGS) -c aesdsocket.c
+	$(CC) $(CFFLAGS) -c aesdsocket.c $(LDFLAGS)
 
 clean :
 	rm -f *.o aesdsocket *.elf *.map
