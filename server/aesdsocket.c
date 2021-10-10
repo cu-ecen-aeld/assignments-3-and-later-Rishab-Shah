@@ -7,8 +7,10 @@
  * https://www.ibm.com/docs/en/zos/2.1.0?topic=functions-sigprocmask-examine-change-thread
  * https://stackoverflow.com/questions/25261/set-and-oldset-in-sigprocmask
  * https://pubs.opengroup.org/onlinepubs/009604599/functions/stdin.html
+ * https://www.freebsd.org/cgi/man.cgi?query=queue&apropos=0&sektion=0&manpath=FreeBSD+10.2-RELEASE&arch=default&format=html
  * Linux notes for reference
  * Author : Rishab Shah
+ BACKUP
  */
 
 //standard headers required
@@ -19,15 +21,19 @@
 #include <unistd.h>
 #include <stdbool.h>
 
-#include <arpa/inet.h> //inet_ntop
-#include <fcntl.h>  //file operations
-#include <signal.h> //signal
-#include <syslog.h> //syslog
+#include <arpa/inet.h>  //inet_ntop
+#include <fcntl.h>      //file operations
+#include <signal.h>     //signal
+#include <syslog.h>     //syslog
 
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
 #include <sys/stat.h>
+#include <netinet/in.h>
+
+#include <pthread.h>    //threads
+#include <sys/queue.h>  //linked list to store thread id's
 
 #define DAEMON_CODE           (1)
 #define PORT_NO				        (9000)
@@ -35,13 +41,25 @@
 #define BACK_LOG			        (10)
 #define BUFFER_CAPACITY       (100)
 #define FILE_PATH_TO_WRITE    ("/var/tmp/aesdsocketdata")
-#define MULTIPLIER_FACTOR     (3)
+#define MULTIPLIER_FACTOR     (2)
+
+
+typedef struct
+{
+    int threadIdx;
+}threadParams_t;
+
+struct slist_data_s
+{
+  threadParams_t thread_data;
+  SLIST_ENTRY(slist_data_s) entries;
+};
 
 int file_des = 0;
 int server_socket_fd = 0;
 sigset_t x;
-
 int g_Signal_handler_detection = 0;
+
 /* Function prototypes */
 void *get_in_addr(struct sockaddr *sa);
 void socket_termination_signal_handler(int signo);
@@ -51,7 +69,6 @@ void exit_handling();
 /* Start of program */
 int main(int argc, char *argv[])
 {
-
   syslog(LOG_DEBUG,"-------------START OF PROGRAM-------------------");
 #if DAEMON_CODE
   int set_daemon = 0;
@@ -94,7 +111,7 @@ int main(int argc, char *argv[])
   }
 
   /* Socket */  
-  server_socket_fd = socket(AF_INET,SOCK_STREAM,0); 
+  server_socket_fd = socket(AF_INET,SOCK_STREAM,0);
   if(server_socket_fd == -1)
   {
     perror("server_socket_fd");  
@@ -106,7 +123,7 @@ int main(int argc, char *argv[])
   int opt = 1;
     
   // Forcefully attaching socket to the port 8080
-  server_setsockopt_fd = setsockopt(server_socket_fd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT,
+  server_setsockopt_fd = setsockopt(server_socket_fd, SOL_SOCKET, SO_REUSEADDR  | SO_REUSEPORT,
                                         &opt, sizeof(opt));
   if(server_setsockopt_fd == -1)
   {
@@ -127,6 +144,7 @@ int main(int argc, char *argv[])
     perror("server bind fd");
     return -1;
   }
+  
  #if DAEMON_CODE 
   /* Daemon creation*/
   if(set_daemon == 1)
@@ -170,6 +188,9 @@ int main(int argc, char *argv[])
   }
   #endif
   
+  //In parent context and daemon mode
+  //SLIST_HEAD(slisthead,slist_data_s)head;
+  
   /* listen */
   int server_listen_fd = 0;
   
@@ -196,15 +217,14 @@ int main(int argc, char *argv[])
   int current_data_pos = 0;
   //int read_status = 0;
   int no_of_bytes_rcvd = 0;
-  
   bool run_status = true;
+  
+  char temp_buffer[BUFFER_CAPACITY];
+  memset(temp_buffer, '\0', BUFFER_CAPACITY);
     
   while(run_status)
   {    
     syslog(LOG_DEBUG,"run_status");
-    
-    
-    syslog(LOG_DEBUG,"run_status - 2. SHould not be at last");
     /* Accept */
     int client_accept_fd = 0;
     socklen_t server_address_len = 0;
@@ -225,7 +245,7 @@ int main(int argc, char *argv[])
         break;
       }
     }
-
+    
     #if 1
     /* sig status */
     int sig_status = 0;
@@ -236,55 +256,77 @@ int main(int argc, char *argv[])
     }
     #endif
     syslog(LOG_DEBUG,"client_accept_fd completed");
-    
+        
     char* writer_file_buffer_ptr = NULL;
     int write_buffer_size = BUFFER_CAPACITY;
     writer_file_buffer_ptr = (char *)malloc(sizeof(char)*BUFFER_CAPACITY);
-    memset(writer_file_buffer_ptr,'\0',BUFFER_CAPACITY);
     if(writer_file_buffer_ptr == NULL)
     {
       syslog(LOG_ERR,"writer_file_buffer_ptr failure\n");
       perror("writer_file_buffer");
     }
+    memset(writer_file_buffer_ptr,'\0',BUFFER_CAPACITY);
     
-    
+    int exit_write_loop = 0;
+      
     /* read */
     int curr_location = 0;
-    while((no_of_bytes_rcvd = (recv(client_accept_fd, writer_file_buffer_ptr + curr_location, BUFFER_CAPACITY, 0))))
-    {
-      if(!no_of_bytes_rcvd || (strchr(writer_file_buffer_ptr, '\n') != NULL))
+    //char *new_line_check_write = NULL;
+    
+    int read_buffer_size = BUFFER_CAPACITY;
+    char *new_line_read = NULL;
+    
+    int send_status = 0;
+    
+    //changed logic to work only on temp_buffer from previous writer_file_buffer_ptr.
+    //writer_file_buffer_ptr vaused 40,000 errors as a memory beyind its scope was accessed.
+    //converted to do to avoid multiple break conditions and variable handling
+    //while((no_of_bytes_rcvd = (recv(client_accept_fd, writer_file_buffer_ptr + curr_location, BUFFER_CAPACITY, 0))))
+    do
+    {    
+      no_of_bytes_rcvd = recv(client_accept_fd, temp_buffer/*writer_file_buffer_ptr + curr_location*/, sizeof(temp_buffer), 0);
+      
+      if(!no_of_bytes_rcvd || (strchr(temp_buffer, '\n') != NULL))
       {
         //Take a break when "\n" is detected (i..e termination conditon) or 
         //when the no of bytes received are zero
-        curr_location = curr_location + no_of_bytes_rcvd;
-        syslog(LOG_DEBUG,"(break -write)curr_location at exit = %d\n",curr_location);
-        break;
+        exit_write_loop = 1;
       }
-    
-      if(no_of_bytes_rcvd + curr_location >= write_buffer_size)
+         
+      if((no_of_bytes_rcvd+curr_location) >= write_buffer_size)
       {
-        write_buffer_size *= MULTIPLIER_FACTOR; 
-        //printf(" ");
-        syslog(LOG_DEBUG,"write_buffer_size = %d\n",write_buffer_size);
-        char* tmp_ptr = realloc(writer_file_buffer_ptr, write_buffer_size);
         
-        if(tmp_ptr == NULL)
+        write_buffer_size *= MULTIPLIER_FACTOR;
+         
+        syslog(LOG_DEBUG,"write_buffer_size = %d\n",write_buffer_size);
+
+        char* tmpptr = (char *)realloc(writer_file_buffer_ptr, (sizeof(char) * write_buffer_size) );
+        
+        if(tmpptr == NULL)
         {
-          /* memory allocation failure. */
-          syslog(LOG_ERR,"realloc failure");
-          perror("realloc failure");
+          perror("write realloc failure");
+          syslog(LOG_DEBUG,"here");
           free(writer_file_buffer_ptr);
           writer_file_buffer_ptr = NULL;
+          free(tmpptr);
+          tmpptr = NULL;
           run_status = false;
-          break;
         }
-         writer_file_buffer_ptr = tmp_ptr;
-         syslog(LOG_DEBUG,"assignment succesful after realloc");
+        
+        writer_file_buffer_ptr = tmpptr;
+
+        syslog(LOG_DEBUG,"assignment succesful after realloc");
       }
       
+      //seperate memory to store the data
+      //the whole working is done on static buffer now
+      memcpy(&writer_file_buffer_ptr[curr_location], temp_buffer, no_of_bytes_rcvd);
+      
       curr_location = curr_location + no_of_bytes_rcvd;
-      //syslog(LOG_DEBUG,"(write)curr_location  = %d\n",curr_location);
-    }
+            
+    }while(exit_write_loop == 0);
+    
+    exit_write_loop = 0;
     
     ret_status = write(file_des,writer_file_buffer_ptr,curr_location);
     syslog(LOG_DEBUG,"return status  = %d\n",ret_status);
@@ -302,69 +344,63 @@ int main(int argc, char *argv[])
     
     int bytes_sent = 0;
     int bytes_read = 0;
-    int read_buffer_loc = 0;
+    int read_buffer_loc = 0; 
+    int store_previous_new_line = 0;
     
-    char* read_file_buffer_ptr = NULL;
-    int read_buffer_size = BUFFER_CAPACITY;
-    
-   
     while(bytes_sent < current_data_pos)
     {
       syslog(LOG_ERR,"read iteration\n");
       read_buffer_loc = 0;
+        
+      char* read_file_buffer_ptr = NULL;
       read_file_buffer_ptr = (char *)malloc(sizeof(char)*BUFFER_CAPACITY);
+
       if(read_file_buffer_ptr == NULL)
       {
         perror("read malloc failure");
         syslog(LOG_DEBUG,"read alloc failure");
       }
       
-      while(1)
+      //Converted to do while for ease of variable handling
+      //while(1)
+      do
       {
         /* read one byte at a time for line check */
-        bytes_read = read(file_des,read_file_buffer_ptr + read_buffer_loc,sizeof(char));
+        bytes_read = read(file_des,read_file_buffer_ptr + read_buffer_loc ,sizeof(char));
         if(bytes_read == -1)
         {
           perror("bytes_read");
           syslog(LOG_DEBUG,"bytes_read ilure");
         }
-    
-        /* new line check */
-        if(strchr(read_file_buffer_ptr,'\n') != NULL)
-        {
-          read_buffer_loc = read_buffer_loc + bytes_read;
-          syslog(LOG_DEBUG,"(break -read)curr_location at exit = %d\n",read_buffer_loc);
-          break;
-        }
-        
-        if(bytes_read+read_buffer_loc >= read_buffer_size)
-        {
-          read_buffer_size = read_buffer_size + (current_data_pos-read_buffer_loc);
-          //printf("new malloc is %d\n",read_buffer_size);
-          char* tmp_ptr = realloc(read_file_buffer_ptr, sizeof(char)*read_buffer_size);
-
-          if(tmp_ptr == NULL)
-          {
-            /* memory allocation failure. */
-            perror("read realloc failure");
-            syslog(LOG_DEBUG,"read realloc failure");
-            free(read_file_buffer_ptr);
-            read_file_buffer_ptr = NULL;
-            break;
-          }
-          
-          read_file_buffer_ptr = tmp_ptr;
-          syslog(LOG_DEBUG,"read assignmnt of tmpptr");
-         
-        }
         
         /* accumulation of one by one read */
         read_buffer_loc = read_buffer_loc + bytes_read;
-       //syslog(LOG_DEBUG,"(read)curr_location at exit = %d\n",read_buffer_loc);
 
-      }
-    
-      int send_status = 0;
+        if(read_buffer_loc > 1)
+        {
+          new_line_read = strchr(read_file_buffer_ptr,'\n');           
+        }
+
+        if(read_buffer_size+store_previous_new_line< (current_data_pos))
+        {
+          read_buffer_size = read_buffer_size + (current_data_pos-store_previous_new_line);
+        
+          char* tmpptr  = realloc(read_file_buffer_ptr, sizeof(char)*read_buffer_size);
+          if(tmpptr == NULL)
+          {
+            perror("read realloc failure");
+            free(read_file_buffer_ptr);
+            read_file_buffer_ptr = NULL;
+            free(tmpptr);
+            tmpptr = NULL;
+          }        
+          read_file_buffer_ptr = tmpptr;
+        }   
+        
+      }while(new_line_read == NULL);
+ 
+      store_previous_new_line = read_buffer_loc;
+      
       send_status = send(client_accept_fd,read_file_buffer_ptr,read_buffer_loc,0);
       syslog(LOG_DEBUG,"send_status (send return) = %d\n",send_status);
       if(send_status == -1)
@@ -379,17 +415,19 @@ int main(int argc, char *argv[])
       syslog(LOG_DEBUG,"bytes_sent variable value = %d\n",bytes_sent);
     }
 
-    close(client_accept_fd);
-    syslog(LOG_DEBUG, "Closed connection from %s", s);
-    
+    #if 1
     sig_status = sigprocmask(SIG_UNBLOCK, &x, NULL);
     if(sig_status == -1)
     {
       perror("sig_status - 2");
     }
-        
+    #endif  
+     
     free(writer_file_buffer_ptr);
     writer_file_buffer_ptr = NULL; 
+    
+    close(client_accept_fd);
+    syslog(LOG_DEBUG, "Closed connection from %s", s);
     syslog(LOG_DEBUG,"writer_file_buffer_ptr free\n");
    
   }
@@ -440,7 +478,11 @@ void exit_handling()
   close(server_socket_fd);
   close(file_des);
   closelog();
+  
 }
+
+
+
 
 
 /* EOF */
