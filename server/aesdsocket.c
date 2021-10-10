@@ -117,6 +117,10 @@ void *recv_client_send_server(void *thread_parameters)
     int current_data_pos = 0; int no_of_bytes_rcvd = 0;
     char temp_buffer[BUFFER_CAPACITY];
     memset(temp_buffer, '\0', BUFFER_CAPACITY);
+    
+    char temp_read[1];
+    memset(temp_read, '\0', 1);
+    
         
     char* writer_file_buffer_ptr = NULL;
     int write_buffer_size = BUFFER_CAPACITY;
@@ -180,6 +184,7 @@ void *recv_client_send_server(void *thread_parameters)
         }
         
         writer_file_buffer_ptr = tmpptr;
+        //free(tmpptr); tmpptr = NULL;
         //syslog(LOG_DEBUG,"assignment succesful after realloc");
       }
       
@@ -240,7 +245,8 @@ void *recv_client_send_server(void *thread_parameters)
       do
       {
         /* read one byte at a time for line check */
-        bytes_read = read(file_des,read_file_buffer_ptr + read_buffer_loc ,sizeof(char));
+        //bytes_read = read(file_des,read_file_buffer_ptr + read_buffer_loc ,sizeof(char));
+        bytes_read = read(file_des,temp_read /*+ read_buffer_loc*/ ,sizeof(temp_read));
         if(bytes_read == -1)
         {
           perror("bytes_read");
@@ -248,14 +254,13 @@ void *recv_client_send_server(void *thread_parameters)
           pthread_exit(l_tp);
         }
         
-        /* accumulation of one by one read */
-        read_buffer_loc = read_buffer_loc + bytes_read;
         if(read_buffer_loc > 1)
         {
-          new_line_read = strchr(read_file_buffer_ptr,'\n');           
+          //new_line_read = strchr(read_file_buffer_ptr,'\n'); 
+          new_line_read = strchr(temp_read,'\n');           
         }
 
-        if(read_buffer_size+store_previous_new_line< (current_data_pos))
+        if(read_buffer_size+store_previous_new_line < (current_data_pos))
         {
           read_buffer_size = read_buffer_size + (current_data_pos-store_previous_new_line);
         
@@ -268,7 +273,12 @@ void *recv_client_send_server(void *thread_parameters)
             pthread_exit(l_tp);
           }        
           read_file_buffer_ptr = tmpptr;
+          //free(tmpptr); tmpptr = NULL;
         }  
+        
+        memcpy(&read_file_buffer_ptr[read_buffer_loc], temp_read, bytes_read);
+                /* accumulation of one by one read */
+        read_buffer_loc = read_buffer_loc + bytes_read;
          
       }while(new_line_read == NULL);
        
@@ -525,7 +535,6 @@ int main(int argc, char *argv[])
     sev.sigev_notify = SIGEV_THREAD;
     sev.sigev_notify_function = timer_thread;
     
-    #if 1
     if(timer_create(clock_id,&sev,&timerid) != 0 )
     {
       perror("timer_create error");
@@ -547,7 +556,6 @@ int main(int argc, char *argv[])
       perror("timer_settime error");
       return -1;
     } 
-       #endif
   }
 
 
@@ -598,7 +606,7 @@ int main(int argc, char *argv[])
     if(client_accept_fd == -1)
     {
       syslog(LOG_DEBUG, "executed");
-      perror("client_accept_fd");
+      perror("client_accept_fd - 2nd location");
       if(g_Signal_handler_detection == 1)
       {
         exit_handling();
