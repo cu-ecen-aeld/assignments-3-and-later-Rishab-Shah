@@ -338,7 +338,7 @@ void *recv_client_send_server(void *thread_parameters)
 //https://www.tutorialspoint.com/c_standard_library/c_function_strftime.htm
 static void timer_thread()
 {
-    printf("entred timer\n");
+
     syslog(LOG_DEBUG, "HEREEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE");
     time_t rawtime;
     struct tm *info;
@@ -390,8 +390,6 @@ timer_exit_location:
 /* Start of program */
 int main(int argc, char *argv[])
 {
-
-
   syslog(LOG_DEBUG,"-------------START OF PROGRAM-------------------");
 #if DAEMON_CODE
   int set_daemon = 0;
@@ -505,9 +503,9 @@ int main(int argc, char *argv[])
     }
     
     //close all open files (in,out,error)
-    //close(STDIN_FILENO);
-    //close(STDOUT_FILENO);
-    //close(STDERR_FILENO); 
+    close(STDIN_FILENO);
+    close(STDOUT_FILENO);
+    close(STDERR_FILENO); 
 
     open("/dev/null",O_RDWR);
     dup(0);
@@ -738,8 +736,6 @@ void exit_handling()
   closelog();
     
   pthread_mutex_destroy(&data_lock);
-  
-  exit(0);
   
 }
 
