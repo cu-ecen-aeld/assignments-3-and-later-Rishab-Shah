@@ -13,11 +13,10 @@
  * https://github.com/cu-ecen-aeld/aesd-lectures/blob/master/lecture9/timer_thread.c
  * https://www.tutorialspoint.com/c_standard_library/c_function_strftime.htm
  * https://man7.org/linux/man-pages/man3/strftime.3.html
+ * https://man7.org/linux/man-pages/man2/timer_delete.2.html
  * Linux notes for reference
  * Beej
  * Author : Rishab Shah
- 
- * thread code 
  */
 
 //standard headers required
@@ -75,6 +74,9 @@ int client_accept_fd = 0;
 int g_Signal_handler_detection = 0;
 pthread_mutex_t data_lock;
 
+timer_t timerid;
+  
+
 /* Function prototypes */
 void *get_in_addr(struct sockaddr *sa);
 void socket_termination_signal_handler(int signo);
@@ -112,7 +114,6 @@ void *recv_client_send_server(void *thread_parameters)
     if( (ret_sig_stat_1 == -1) || (ret_sig_stat_2 == -1) || (ret_sig_stat_3 == -1)  ) 
     {
       perror("sig signal set");
-      pthread_exit(l_tp);
     }
    
     /* local declarations */
@@ -120,9 +121,9 @@ void *recv_client_send_server(void *thread_parameters)
     char temp_buffer[BUFFER_CAPACITY];
     memset(temp_buffer, '\0', BUFFER_CAPACITY);
     
+    
     char temp_read[1];
     memset(temp_read, '\0', 1);
-    
         
     char* writer_file_buffer_ptr = NULL;
     int write_buffer_size = BUFFER_CAPACITY;
@@ -131,7 +132,6 @@ void *recv_client_send_server(void *thread_parameters)
     { 
       perror("writer_file_buffer");
       syslog(LOG_ERR,"writer_file_buffer_ptr failure\n");
-      pthread_exit(l_tp);
     }
     memset(writer_file_buffer_ptr,'\0',BUFFER_CAPACITY);
     
@@ -143,13 +143,12 @@ void *recv_client_send_server(void *thread_parameters)
     int send_status = 0;
     int exit_write_loop = 0;
 
-    #if 1
+    #if 0
     /* sig status */
     int sig_status = 0;
     sig_status = sigprocmask(SIG_BLOCK, &x, NULL);
     if(sig_status == -1)
     {
-      pthread_exit(l_tp);
       perror("sig_status - 1");
     }
     #endif
@@ -165,7 +164,6 @@ void *recv_client_send_server(void *thread_parameters)
       if(no_of_bytes_rcvd == -1)
       {
         perror("error in reception");
-        pthread_exit(l_tp);
       }
       
       if(!no_of_bytes_rcvd || (strchr(temp_buffer, '\n') != NULL))
@@ -182,11 +180,9 @@ void *recv_client_send_server(void *thread_parameters)
           perror("write realloc failure");
           free(writer_file_buffer_ptr); writer_file_buffer_ptr = NULL;
           free(tmpptr); tmpptr = NULL;
-          pthread_exit(l_tp);
         }
         
         writer_file_buffer_ptr = tmpptr;
-        //free(tmpptr); tmpptr = NULL;
         //syslog(LOG_DEBUG,"assignment succesful after realloc");
       }
       
@@ -209,7 +205,6 @@ void *recv_client_send_server(void *thread_parameters)
     {
       syslog(LOG_ERR,"file writing failure\n");
       perror("file writing");
-      pthread_exit(l_tp);
     }
     
     pthread_mutex_unlock(&data_lock);
@@ -237,7 +232,6 @@ void *recv_client_send_server(void *thread_parameters)
       {
         perror("read malloc failure");
         syslog(LOG_DEBUG,"read alloc failure");
-        pthread_exit(l_tp);
       }
       
       //protecting the read to the file - global fd
@@ -253,13 +247,13 @@ void *recv_client_send_server(void *thread_parameters)
         {
           perror("bytes_read");
           syslog(LOG_DEBUG,"bytes_read ilure");
-          pthread_exit(l_tp);
         }
         
+
         if(read_buffer_loc > 1)
         {
-          //new_line_read = strchr(read_file_buffer_ptr,'\n'); 
-          new_line_read = strchr(temp_read,'\n');           
+         // new_line_read = strchr(read_file_buffer_ptr,'\n');  
+         new_line_read = strchr(temp_read,'\n');           
         }
 
         if(read_buffer_size+store_previous_new_line < (current_data_pos))
@@ -272,14 +266,12 @@ void *recv_client_send_server(void *thread_parameters)
             perror("read realloc failure");
             free(read_file_buffer_ptr); read_file_buffer_ptr = NULL;
             free(tmpptr); tmpptr = NULL;
-            pthread_exit(l_tp);
           }        
           read_file_buffer_ptr = tmpptr;
-          //free(tmpptr); tmpptr = NULL;
         }  
         
         memcpy(&read_file_buffer_ptr[read_buffer_loc], temp_read, bytes_read);
-                /* accumulation of one by one read */
+        /* accumulation of one by one read */
         read_buffer_loc = read_buffer_loc + bytes_read;
          
       }while(new_line_read == NULL);
@@ -292,7 +284,6 @@ void *recv_client_send_server(void *thread_parameters)
       if(send_status == -1)
       { 
         perror("error in sending to client");
-        pthread_exit(l_tp);
       }
       
       free(read_file_buffer_ptr);
@@ -304,7 +295,7 @@ void *recv_client_send_server(void *thread_parameters)
 
     close(l_tp->thread_accept_fd);
     
-    #if 1
+    #if 0
     sig_status = sigprocmask(SIG_UNBLOCK, &x, NULL);
     if(sig_status == -1)
     {
@@ -316,21 +307,21 @@ void *recv_client_send_server(void *thread_parameters)
     writer_file_buffer_ptr = NULL;
     
     l_tp->thread_completion_status = true;
-    pthread_exit(l_tp);
+    return NULL;
 }
 
 
 //https://www.tutorialspoint.com/c_standard_library/c_function_strftime.htm
 static void timer_thread()
 {
+    printf("entred timer\n");
+    syslog(LOG_DEBUG, "HEREEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE");
     time_t rawtime;
     struct tm *info;
     char *time_stamp = (char *)malloc(TIME_BUFFER*sizeof(char));
     if(time_stamp == NULL)
     {
-      perror("time_stamp failed");
-      pthread_exit(NULL);
-      
+      perror("time_stamp failed");      
     }
 
     time(&rawtime);
@@ -341,15 +332,13 @@ static void timer_thread()
     if(ret_bytes == 0)
     {
       perror("strftime failed");
-      free(time_stamp);
-      pthread_exit(NULL);
+      goto timer_exit_location;
     }
     
     if(pthread_mutex_lock(&data_lock) != 0)
     {
       perror("lock not acquired");
-      free(time_stamp);
-      pthread_exit(NULL);
+      goto timer_exit_location;
     }
     
     int bytes_written= 0;
@@ -358,32 +347,29 @@ static void timer_thread()
     {
       syslog(LOG_ERR,"bytes_writtenfailure\n");
       perror("file writing");
-      free(time_stamp);
-      pthread_exit(NULL);
+      goto timer_exit_location;
     }
     
     if(pthread_mutex_unlock(&data_lock) != 0)
     {
       perror("lock not acquired");
-      free(time_stamp);
-      pthread_exit(NULL);
+      goto timer_exit_location;
     }
     
+    
+timer_exit_location:
+    
     free(time_stamp);
-    pthread_exit(NULL);
     
 }
-
 
 /* Start of program */
 int main(int argc, char *argv[])
 {
 
-  
-  //daemon
-  pid_t pid = 0;
-  
-  #if DAEMON_CODE
+
+  syslog(LOG_DEBUG,"-------------START OF PROGRAM-------------------");
+#if DAEMON_CODE
   int set_daemon = 0;
   if(argc > 1)
   {
@@ -392,61 +378,7 @@ int main(int argc, char *argv[])
       set_daemon = 1;
     }
   }
-  #endif
-
-  #if DAEMON_CODE 
-  /* Daemon creation*/
-  if(set_daemon == 1)
-  {
-    syslog(LOG_DEBUG,"daemon\n");
-    pid = fork();
-    if(pid == -1)
-    {
-      perror("fork failed");
-      return -1;
-    }
-    else if(pid > 0)
-    {
-      //parent context
-      syslog(LOG_DEBUG,"CHILD PID = %d\n",pid);
-      exit(EXIT_SUCCESS);
-    }
-    
-    /* create new session and process grp*/
-    if(setsid()== -1)
-    {
-      perror("set sid failure");
-      return -1;
-    }
-    
-    //change cd to root
-    if(chdir("/") == -1)
-    {
-      perror("chdir");
-      return -1;
-    }
-    
-    //close all open files (in,out,error)
-    close(STDIN_FILENO);
-    close(STDOUT_FILENO);
-    close(STDERR_FILENO); 
-
-    open("/dev/null",O_RDWR);
-    dup(0);
-    dup(0);
-  }
-  #endif
-  
-  
-  //for both context
-  struct sigevent sev;
-  struct timespec start_time;
-  int clock_id = CLOCK_MONOTONIC;
-	struct itimerspec itimerspec;
-  timer_t timerid;
-  
-  syslog(LOG_DEBUG,"-------------START OF PROGRAM-------------------");
-
+#endif
 
   slist_data_t *datap = NULL;
   SLIST_HEAD(slisthead,slist_data_s)head;
@@ -460,7 +392,9 @@ int main(int argc, char *argv[])
     return -1;
   }
   
-
+  
+  //daemon
+  pid_t pid = 0;
   openlog(NULL, 0, LOG_USER);
    
   /* Signal handler */ // Why? Running in while loop client connection
@@ -512,12 +446,63 @@ int main(int argc, char *argv[])
     return -1;
   }
   
+  
+  
+ #if DAEMON_CODE 
+  /* Daemon creation*/
+  if(set_daemon == 1)
+  {
+    syslog(LOG_DEBUG,"daemon\n");
+    pid = fork();
+    if(pid == -1)
+    {
+      perror("fork failed");
+      return -1;
+    }
+    else if(pid > 0)
+    {
+      //parent context
+      syslog(LOG_DEBUG,"CHILD PID = %d\n",pid);
+      exit(EXIT_SUCCESS);
+    }
+    
+    /* create new session and process grp*/
+    if(setsid()== -1)
+    {
+      perror("set sid failure");
+      return -1;
+    }
+    
+    //change cd to root
+    if(chdir("/") == -1)
+    {
+      perror("chdir");
+      return -1;
+    }
+    
+    //close all open files (in,out,error)
+    //close(STDIN_FILENO);
+    //close(STDOUT_FILENO);
+    //close(STDERR_FILENO); 
+
+    open("/dev/null",O_RDWR);
+    dup(0);
+    dup(0);
+  }
+  #endif
+  
+  //for both context
+  struct sigevent sev;
+  struct timespec start_time;
+  int clock_id = CLOCK_MONOTONIC;
+	struct itimerspec itimerspec;
+  
 
   //wrte code below as post this everything will be in one context
   //writing above may likely be it in another context
   //indicatest that the timer should start only in one context
   //either parent or child (pid = 00) child and daemon = 0 (parent)
-  if((set_daemon == 0 ) || (pid = 0))
+  if((set_daemon == 0 ) || (pid == 0))
   {
     //https://github.com/cu-ecen-aeld/aesd-lectures/blob/master/lecture9/timer_thread.c
     memset(&sev,0,sizeof(struct sigevent));
@@ -525,6 +510,7 @@ int main(int argc, char *argv[])
     sev.sigev_notify = SIGEV_THREAD;
     sev.sigev_notify_function = timer_thread;
     
+    #if 1
     if(timer_create(clock_id,&sev,&timerid) != 0 )
     {
       perror("timer_create error");
@@ -546,9 +532,8 @@ int main(int argc, char *argv[])
       perror("timer_settime error");
       return -1;
     } 
+       #endif
   }
-
-
   
   /* listen */
   int server_listen_fd = 0;
@@ -596,10 +581,20 @@ int main(int argc, char *argv[])
     if(client_accept_fd == -1)
     {
       syslog(LOG_DEBUG, "executed");
-      perror("client_accept_fd - 2nd location");
+      perror("client_accept_fd");
       if(g_Signal_handler_detection == 1)
       {
         exit_handling();
+        //free the memory
+        while(!SLIST_EMPTY(&head))
+        {
+          datap = SLIST_FIRST(&head);
+
+          SLIST_REMOVE_HEAD(&head, entries);
+
+          free(datap);
+        }
+        
         break;
       }  
     }
@@ -637,16 +632,15 @@ int main(int argc, char *argv[])
         pthread_join((datap->thread_data).pt_thread, NULL);
       }
     }
-
-    syslog(LOG_DEBUG, "Closed connection from %s", s);
-    syslog(LOG_DEBUG,"writer_file_buffer_ptr free\n");
-   
+    
+    //syslog(LOG_DEBUG, "Closed connection from %s", s);
+    //syslog(LOG_DEBUG,"writer_file_buffer_ptr free\n");   
   }
   
-      SLIST_FOREACH(datap,&head,entries)
-    {
-        pthread_join((datap->thread_data).pt_thread, NULL);
-    }
+  SLIST_FOREACH(datap,&head,entries)
+  {
+    pthread_join((datap->thread_data).pt_thread, NULL);
+  }
   
   close(client_accept_fd);
   
@@ -690,6 +684,14 @@ void socket_termination_signal_handler(int signo)
     perror("Failed on shutdown");
     syslog(LOG_ERR,"Could not close socket fd in signal handler: %s",strerror(errno));
   }
+  
+  int ret_status = 0;
+  ret_status = timer_delete(timerid);
+  if(ret_status == -1)
+  { perror("error in deleting timer");}
+  
+  
+  syslog(LOG_DEBUG,"deleting timer");
 
   g_Signal_handler_detection = 1;
 
@@ -699,9 +701,10 @@ void socket_termination_signal_handler(int signo)
 void exit_handling()
 { 
   
+  printf("exit handler\n");
   //closed any pending operations
   //close open sockets
-  //delete the FILE created
+  //delete the FILE createdfSL
   syslog(LOG_DEBUG,"exit_handling");
   int ret_status = 0;
   ret_status = remove(FILE_PATH_TO_WRITE);
@@ -711,16 +714,11 @@ void exit_handling()
   close(server_socket_fd);
   close(file_des);
   closelog();
-  
-  //remove
-  //exit(0);
-  
+    
   pthread_mutex_destroy(&data_lock);
   
+  exit(0);
+  
 }
-
-
-
-
 
 /* EOF */
