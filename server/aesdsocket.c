@@ -339,7 +339,7 @@ void *recv_client_send_server(void *thread_parameters)
 static void timer_thread()
 {
 
-    syslog(LOG_DEBUG, "HEREEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE");
+    syslog(LOG_DEBUG, "TIMESTAMP");
     time_t rawtime;
     struct tm *info;
     char *time_stamp = (char *)malloc(TIME_BUFFER*sizeof(char));
@@ -602,8 +602,6 @@ int main(int argc, char *argv[])
     syslog(LOG_DEBUG, "Accepted connection from %s", s);
     if(client_accept_fd == -1)
     {
-      syslog(LOG_DEBUG, "executed");
-      perror("client_accept_fd");
       if(g_Signal_handler_detection == 1)
       {
         exit_handling();
@@ -618,6 +616,11 @@ int main(int argc, char *argv[])
         }
         
         break;
+      }
+      else
+      {
+        syslog(LOG_DEBUG, "executed");
+        perror("client_accept_fd");
       }  
     }
      
