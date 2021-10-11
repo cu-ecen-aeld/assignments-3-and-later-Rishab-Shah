@@ -16,6 +16,8 @@
  * Linux notes for reference
  * Beej
  * Author : Rishab Shah
+ 
+ * thread code 
  */
 
 //standard headers required
@@ -373,33 +375,15 @@ static void timer_thread()
 }
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 /* Start of program */
 int main(int argc, char *argv[])
 {
-  //for both context
-  struct sigevent sev;
-  struct timespec start_time;
-  int clock_id = CLOCK_MONOTONIC;
-	struct itimerspec itimerspec;
-  timer_t timerid;
+
   
-  syslog(LOG_DEBUG,"-------------START OF PROGRAM-------------------");
-#if DAEMON_CODE
+  //daemon
+  pid_t pid = 0;
+  
+  #if DAEMON_CODE
   int set_daemon = 0;
   if(argc > 1)
   {
@@ -408,7 +392,61 @@ int main(int argc, char *argv[])
       set_daemon = 1;
     }
   }
-#endif
+  #endif
+
+  #if DAEMON_CODE 
+  /* Daemon creation*/
+  if(set_daemon == 1)
+  {
+    syslog(LOG_DEBUG,"daemon\n");
+    pid = fork();
+    if(pid == -1)
+    {
+      perror("fork failed");
+      return -1;
+    }
+    else if(pid > 0)
+    {
+      //parent context
+      syslog(LOG_DEBUG,"CHILD PID = %d\n",pid);
+      exit(EXIT_SUCCESS);
+    }
+    
+    /* create new session and process grp*/
+    if(setsid()== -1)
+    {
+      perror("set sid failure");
+      return -1;
+    }
+    
+    //change cd to root
+    if(chdir("/") == -1)
+    {
+      perror("chdir");
+      return -1;
+    }
+    
+    //close all open files (in,out,error)
+    close(STDIN_FILENO);
+    close(STDOUT_FILENO);
+    close(STDERR_FILENO); 
+
+    open("/dev/null",O_RDWR);
+    dup(0);
+    dup(0);
+  }
+  #endif
+  
+  
+  //for both context
+  struct sigevent sev;
+  struct timespec start_time;
+  int clock_id = CLOCK_MONOTONIC;
+	struct itimerspec itimerspec;
+  timer_t timerid;
+  
+  syslog(LOG_DEBUG,"-------------START OF PROGRAM-------------------");
+
 
   slist_data_t *datap = NULL;
   SLIST_HEAD(slisthead,slist_data_s)head;
@@ -422,9 +460,7 @@ int main(int argc, char *argv[])
     return -1;
   }
   
-  
-  //daemon
-  pid_t pid = 0;
+
   openlog(NULL, 0, LOG_USER);
    
   /* Signal handler */ // Why? Running in while loop client connection
@@ -475,52 +511,6 @@ int main(int argc, char *argv[])
     perror("server bind fd");
     return -1;
   }
-  
-  
-  
- #if DAEMON_CODE 
-  /* Daemon creation*/
-  if(set_daemon == 1)
-  {
-    syslog(LOG_DEBUG,"daemon\n");
-    pid = fork();
-    if(pid == -1)
-    {
-      perror("fork failed");
-      return -1;
-    }
-    else if(pid > 0)
-    {
-      //parent context
-      syslog(LOG_DEBUG,"CHILD PID = %d\n",pid);
-      exit(EXIT_SUCCESS);
-    }
-    
-    /* create new session and process grp*/
-    if(setsid()== -1)
-    {
-      perror("set sid failure");
-      return -1;
-    }
-    
-    //change cd to root
-    if(chdir("/") == -1)
-    {
-      perror("chdir");
-      return -1;
-    }
-    
-    //close all open files (in,out,error)
-    close(STDIN_FILENO);
-    close(STDOUT_FILENO);
-    close(STDERR_FILENO); 
-
-    open("/dev/null",O_RDWR);
-    dup(0);
-    dup(0);
-  }
-  #endif
-  
   
 
   //wrte code below as post this everything will be in one context
@@ -647,8 +637,6 @@ int main(int argc, char *argv[])
         pthread_join((datap->thread_data).pt_thread, NULL);
       }
     }
-
-
 
     syslog(LOG_DEBUG, "Closed connection from %s", s);
     syslog(LOG_DEBUG,"writer_file_buffer_ptr free\n");
