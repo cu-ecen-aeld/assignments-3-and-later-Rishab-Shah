@@ -101,6 +101,10 @@ static inline void timespec_add( struct timespec *result,
 
 void *recv_client_send_server(void *thread_parameters)
 {
+
+    /* sig status */
+    int sig_status = 0;
+    
     threadParams_t *l_tp = (threadParams_t*) thread_parameters;
     //printf("accpet for thread %d\n",l_tp->thread_accept_fd);
     syslog(LOG_DEBUG, "client fd rcvd is %d",l_tp->thread_accept_fd);
@@ -143,9 +147,8 @@ void *recv_client_send_server(void *thread_parameters)
     int send_status = 0;
     int exit_write_loop = 0;
 
-    #if 0
-    /* sig status */
-    int sig_status = 0;
+    #if 1
+
     sig_status = sigprocmask(SIG_BLOCK, &x, NULL);
     if(sig_status == -1)
     {
@@ -195,6 +198,15 @@ void *recv_client_send_server(void *thread_parameters)
     
     exit_write_loop = 0;
 
+
+    #if 1
+    sig_status = sigprocmask(SIG_UNBLOCK, &x, NULL);
+    if(sig_status == -1)
+    {
+      perror("sig_status - 2");
+    }
+    #endif  
+
     //protecting the wrte to the file - global fd
     pthread_mutex_lock(&data_lock);
     
@@ -219,6 +231,16 @@ void *recv_client_send_server(void *thread_parameters)
     int bytes_read = 0;
     int read_buffer_loc = 0; 
     int store_previous_new_line = 0;
+    
+    
+    #if 1
+    /* sig status */
+    sig_status = sigprocmask(SIG_BLOCK, &x, NULL);
+    if(sig_status == -1)
+    {
+      perror("sig_status - 1");
+    }
+    #endif
     
     while(bytes_sent < current_data_pos)
     {
@@ -279,6 +301,8 @@ void *recv_client_send_server(void *thread_parameters)
       store_previous_new_line = read_buffer_loc;
       pthread_mutex_unlock(&data_lock);
       
+
+      
       send_status = send(client_accept_fd,read_file_buffer_ptr,read_buffer_loc,0);
       //syslog(LOG_DEBUG,"send_status (send return) = %d\n",send_status);
       if(send_status == -1)
@@ -292,17 +316,17 @@ void *recv_client_send_server(void *thread_parameters)
       bytes_sent = bytes_sent + read_buffer_loc;
       //syslog(LOG_DEBUG,"bytes_sent variable value = %d\n",bytes_sent);
     }
-
-    close(l_tp->thread_accept_fd);
     
-    #if 0
+    #if 1
     sig_status = sigprocmask(SIG_UNBLOCK, &x, NULL);
     if(sig_status == -1)
     {
       perror("sig_status - 2");
     }
     #endif  
-    
+
+    close(l_tp->thread_accept_fd);
+        
     free(writer_file_buffer_ptr);
     writer_file_buffer_ptr = NULL;
     
@@ -656,8 +680,6 @@ int main(int argc, char *argv[])
 
   pthread_mutex_destroy(&data_lock);
   
-  //TODO: free memory
-  syslog(LOG_DEBUG,"exit reached\n");
   syslog(LOG_DEBUG,"-------------END OF PROGRAM-------------------");
   return 0;
 }
