@@ -382,7 +382,7 @@ static void timer_thread()
     
     
 timer_exit_location:
-    
+
     free(time_stamp);
     
 }
@@ -524,8 +524,12 @@ int main(int argc, char *argv[])
   //writing above may likely be it in another context
   //indicatest that the timer should start only in one context
   //either parent or child (pid = 00) child and daemon = 0 (parent)
-  if((set_daemon == 0 ) || (pid == 0))
-  {
+  //if((set_daemon == 0 ) || (pid == 0))
+  //Since, the code is at this location. It would not matter to put a explicity check
+  // as always only parent or child would execute at once.
+  //If this step was above, then it is possible that in daemon mode
+  //two iterations would have started one in parent and other in child
+  //{
     //https://github.com/cu-ecen-aeld/aesd-lectures/blob/master/lecture9/timer_thread.c
     memset(&sev,0,sizeof(struct sigevent));
     //function for setting up timer and 
@@ -555,7 +559,7 @@ int main(int argc, char *argv[])
       return -1;
     } 
        #endif
-  }
+  //}
   
   /* listen */
   int server_listen_fd = 0;
@@ -582,11 +586,13 @@ int main(int argc, char *argv[])
     
   while(run_status)
   { 
+    #if 0
     if(g_Signal_handler_detection == 1)
     {
       exit_handling();
       break;
-    }  
+    }
+    #endif 
   
     syslog(LOG_DEBUG,"run_status");
     
@@ -724,7 +730,7 @@ void socket_termination_signal_handler(int signo)
 void exit_handling()
 { 
   
-  printf("exit handler\n");
+  //printf("exit handler\n");
   //closed any pending operations
   //close open sockets
   //delete the FILE createdfSL
