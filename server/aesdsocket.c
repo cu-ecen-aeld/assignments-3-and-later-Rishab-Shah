@@ -232,15 +232,12 @@ void *recv_client_send_server(void *thread_parameters)
     int read_buffer_loc = 0; 
     int store_previous_new_line = 0;
     
-    
-    #if 1
     /* sig status */
     sig_status = sigprocmask(SIG_BLOCK, &x, NULL);
     if(sig_status == -1)
     {
       perror("sig_status - 1");
     }
-    #endif
     
     while(bytes_sent < current_data_pos)
     {
@@ -317,13 +314,11 @@ void *recv_client_send_server(void *thread_parameters)
       //syslog(LOG_DEBUG,"bytes_sent variable value = %d\n",bytes_sent);
     }
     
-    #if 1
     sig_status = sigprocmask(SIG_UNBLOCK, &x, NULL);
     if(sig_status == -1)
     {
       perror("sig_status - 2");
     }
-    #endif  
 
     close(l_tp->thread_accept_fd);
         
@@ -468,8 +463,6 @@ int main(int argc, char *argv[])
     return -1;
   }
   
-  
-  
  #if DAEMON_CODE 
   /* Daemon creation*/
   if(set_daemon == 1)
@@ -519,7 +512,6 @@ int main(int argc, char *argv[])
   int clock_id = CLOCK_MONOTONIC;
 	struct itimerspec itimerspec;
   
-
   //wrte code below as post this everything will be in one context
   //writing above may likely be it in another context
   //indicatest that the timer should start only in one context
@@ -529,37 +521,33 @@ int main(int argc, char *argv[])
   // as always only parent or child would execute at once.
   //If this step was above, then it is possible that in daemon mode
   //two iterations would have started one in parent and other in child
-  //{
-    //https://github.com/cu-ecen-aeld/aesd-lectures/blob/master/lecture9/timer_thread.c
-    memset(&sev,0,sizeof(struct sigevent));
-    //function for setting up timer and 
-    sev.sigev_notify = SIGEV_THREAD;
-    sev.sigev_notify_function = timer_thread;
-    
-    #if 1
-    if(timer_create(clock_id,&sev,&timerid) != 0 )
-    {
-      perror("timer_create error");
-      return -1;
-    } 
- 
-    if(clock_gettime(clock_id,&start_time) != 0 )
-    {
-      perror("clock_gettime error");
-      return -1;
-    } 
-    
-    itimerspec.it_interval.tv_sec = 10;
-    itimerspec.it_interval.tv_nsec = 1000000; //extra delay to margin
-    timespec_add(&itimerspec.it_value,&start_time,&itimerspec.it_interval);
-    
-    if(timer_settime(timerid, TIMER_ABSTIME, &itimerspec, NULL ) != 0 )
-    {
-      perror("timer_settime error");
-      return -1;
-    } 
-       #endif
-  //}
+  //https://github.com/cu-ecen-aeld/aesd-lectures/blob/master/lecture9/timer_thread.c
+  memset(&sev,0,sizeof(struct sigevent));
+  //function for setting up timer and 
+  sev.sigev_notify = SIGEV_THREAD;
+  sev.sigev_notify_function = timer_thread;
+  
+  if(timer_create(clock_id,&sev,&timerid) != 0 )
+  {
+    perror("timer_create error");
+    return -1;
+  } 
+
+  if(clock_gettime(clock_id,&start_time) != 0 )
+  {
+    perror("clock_gettime error");
+    return -1;
+  } 
+  
+  itimerspec.it_interval.tv_sec = 10;
+  itimerspec.it_interval.tv_nsec = 1000000; //extra delay to margin
+  timespec_add(&itimerspec.it_value,&start_time,&itimerspec.it_interval);
+  
+  if(timer_settime(timerid, TIMER_ABSTIME, &itimerspec, NULL ) != 0 )
+  {
+    perror("timer_settime error");
+    return -1;
+  } 
   
   /* listen */
   int server_listen_fd = 0;
@@ -586,14 +574,6 @@ int main(int argc, char *argv[])
     
   while(run_status)
   { 
-    #if 0
-    if(g_Signal_handler_detection == 1)
-    {
-      exit_handling();
-      break;
-    }
-    #endif 
-  
     syslog(LOG_DEBUG,"run_status");
     
     /* Accept */
@@ -645,8 +625,7 @@ int main(int argc, char *argv[])
     (datap->thread_data).thread_completion_status = false;
    
     SLIST_INSERT_HEAD(&head,datap,entries);
-    
-   
+     
     //TODO: create a thread and assign the function to process
     int thread_stat = 0;
     thread_stat = pthread_create(&(datap->thread_data).pt_thread,NULL,&recv_client_send_server,(void *)&(datap->thread_data));
@@ -662,10 +641,7 @@ int main(int argc, char *argv[])
       { 
         pthread_join((datap->thread_data).pt_thread, NULL);
       }
-    }
-    
-    //syslog(LOG_DEBUG, "Closed connection from %s", s);
-    //syslog(LOG_DEBUG,"writer_file_buffer_ptr free\n");   
+    }  
   }
   
   SLIST_FOREACH(datap,&head,entries)
@@ -729,8 +705,6 @@ void socket_termination_signal_handler(int signo)
 /* commmon part handling for normal and sigint,sigterm exit */
 void exit_handling()
 { 
-  
-  //printf("exit handler\n");
   //closed any pending operations
   //close open sockets
   //delete the FILE createdfSL
