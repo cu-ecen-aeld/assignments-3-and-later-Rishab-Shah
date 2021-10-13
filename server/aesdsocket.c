@@ -61,6 +61,7 @@ typedef struct
     bool thread_completion_status;  //to keep track of detachment, success or not
 }threadParams_t;
 
+//Linked list node added
 typedef struct slist_data_s
 {
   threadParams_t thread_data;
@@ -70,12 +71,10 @@ typedef struct slist_data_s
 int file_des = 0;
 int server_socket_fd = 0;
 int client_accept_fd = 0;
+timer_t timerid;
 
 int g_Signal_handler_detection = 0;
 pthread_mutex_t data_lock;
-
-timer_t timerid;
-  
 
 /* Function prototypes */
 void *get_in_addr(struct sockaddr *sa);
@@ -106,7 +105,6 @@ void *recv_client_send_server(void *thread_parameters)
     int sig_status = 0;
     
     threadParams_t *l_tp = (threadParams_t*) thread_parameters;
-    //printf("accpet for thread %d\n",l_tp->thread_accept_fd);
     syslog(LOG_DEBUG, "client fd rcvd is %d",l_tp->thread_accept_fd);
     
     /* Add signals to be masked */
@@ -125,7 +123,6 @@ void *recv_client_send_server(void *thread_parameters)
     char temp_buffer[BUFFER_CAPACITY];
     memset(temp_buffer, '\0', BUFFER_CAPACITY);
     
-    
     char temp_read[1];
     memset(temp_read, '\0', 1);
         
@@ -138,8 +135,7 @@ void *recv_client_send_server(void *thread_parameters)
       syslog(LOG_ERR,"writer_file_buffer_ptr failure\n");
     }
     memset(writer_file_buffer_ptr,'\0',BUFFER_CAPACITY);
-    
-    
+      
     /* read */
     int curr_location = 0; 
     int read_buffer_size = BUFFER_CAPACITY;
@@ -147,14 +143,11 @@ void *recv_client_send_server(void *thread_parameters)
     int send_status = 0;
     int exit_write_loop = 0;
 
-    #if 1
-
     sig_status = sigprocmask(SIG_BLOCK, &x, NULL);
     if(sig_status == -1)
     {
       perror("sig_status - 1");
     }
-    #endif
     
     //changed logic to work only on temp_buffer from previous writer_file_buffer_ptr.
     //writer_file_buffer_ptr caused 40,000 errors as a memory beyind its scope was accessed.
@@ -186,7 +179,6 @@ void *recv_client_send_server(void *thread_parameters)
         }
         
         writer_file_buffer_ptr = tmpptr;
-        //syslog(LOG_DEBUG,"assignment succesful after realloc");
       }
       
       //seperate memory to store the data
@@ -198,14 +190,11 @@ void *recv_client_send_server(void *thread_parameters)
     
     exit_write_loop = 0;
 
-
-    #if 1
     sig_status = sigprocmask(SIG_UNBLOCK, &x, NULL);
     if(sig_status == -1)
     {
       perror("sig_status - 2");
     }
-    #endif  
 
     //protecting the wrte to the file - global fd
     pthread_mutex_lock(&data_lock);
@@ -297,9 +286,7 @@ void *recv_client_send_server(void *thread_parameters)
        
       store_previous_new_line = read_buffer_loc;
       pthread_mutex_unlock(&data_lock);
-      
-
-      
+        
       send_status = send(client_accept_fd,read_file_buffer_ptr,read_buffer_loc,0);
       //syslog(LOG_DEBUG,"send_status (send return) = %d\n",send_status);
       if(send_status == -1)
@@ -330,10 +317,11 @@ void *recv_client_send_server(void *thread_parameters)
 }
 
 
-//https://www.tutorialspoint.com/c_standard_library/c_function_strftime.htm
+// https://www.tutorialspoint.com/c_standard_library/c_function_strftime.htm
+// timer thread to add timestamps
+// https://man7.org/linux/man-pages/man3/strftime.3.html
 static void timer_thread()
 {
-
     syslog(LOG_DEBUG, "TIMESTAMP");
     time_t rawtime;
     struct tm *info;
@@ -360,6 +348,7 @@ static void timer_thread()
       goto timer_exit_location;
     }
     
+    /* protecting the data written to file between mutex lock and unlock */
     int bytes_written= 0;
     bytes_written = write(file_des, time_stamp, ret_bytes);
     if(bytes_written == -1)
@@ -374,10 +363,8 @@ static void timer_thread()
       perror("lock not acquired");
       goto timer_exit_location;
     }
-    
-    
+       
 timer_exit_location:
-
     free(time_stamp);
     
 }
@@ -409,7 +396,6 @@ int main(int argc, char *argv[])
     return -1;
   }
   
-  
   //daemon
   pid_t pid = 0;
   openlog(NULL, 0, LOG_USER);
@@ -427,7 +413,6 @@ int main(int argc, char *argv[])
     return -1;
   }
   
- 
   /* Socket */  
   server_socket_fd = socket(AF_INET,SOCK_STREAM,0);
   if(server_socket_fd == -1)
@@ -569,7 +554,6 @@ int main(int argc, char *argv[])
     return -1;
   }
   
-
   bool run_status = true;
     
   while(run_status)
@@ -655,9 +639,7 @@ int main(int argc, char *argv[])
   while(!SLIST_EMPTY(&head))
   {
     datap = SLIST_FIRST(&head);
-
     SLIST_REMOVE_HEAD(&head, entries);
-
     free(datap);
   }
 
@@ -694,8 +676,7 @@ void socket_termination_signal_handler(int signo)
   ret_status = timer_delete(timerid);
   if(ret_status == -1)
   { perror("error in deleting timer");}
-  
-  
+   
   syslog(LOG_DEBUG,"deleting timer");
 
   g_Signal_handler_detection = 1;
