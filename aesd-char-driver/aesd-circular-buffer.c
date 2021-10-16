@@ -38,7 +38,6 @@ struct aesd_buffer_entry *aesd_circular_buffer_find_entry_offset_for_fpos(struct
     //NULL check
     if( (buffer == NULL) || (entry_offset_byte_rtn == NULL))
     {
-        printf("execute - 2?\n");
         return NULL;
     }
     
@@ -99,7 +98,6 @@ void aesd_circular_buffer_add_entry(struct aesd_circular_buffer *buffer, const s
     //null check
     if((buffer == NULL) || (add_entry == NULL))
     {
-      printf("execute - 1?\n");
       return;
     }
     
