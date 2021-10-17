@@ -45,6 +45,32 @@ Call trace:
 Code: d2800001 d2800000 d503233f d50323bf (b900003f) 
 ---[ end trace 5f56549fa8e1c4b8 ]---
 
-Welcome to Buildroot
-buildroot login: 
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+/home/rishab/assignment-4-Rishab-Shah/buildroot/output/build/ldd-7dae648a9f304151b0e268a62d0d2a1007793b4f/misc-modules/faulty.ko:     file format elf64-littleaarch64
+
+
+Disassembly of section .text:
+
+0000000000000000 <faulty_write>:
+   0:   d2800001        mov     x1, #0x0                        // #0
+   4:   d2800000        mov     x0, #0x0                        // #0
+   8:   d503233f        paciasp
+   c:   d50323bf        autiasp
+  10:   b900003f        str     wzr, [x1]
+  14:   d65f03c0        ret
+  18:   d503201f        nop
+  1c:   d503201f        nop
+
+
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+From the call trace it is clear that, the problem occured when faulty_write was called.
+On performing the disassembly of the faulty.ko file, it is seen that the 0 is updated on a memory address 0.
+i.e. a invalid memory location is accessed on memory location 4.
+
+This would cause to update any random memory and create issue.
+Hence, when this happens the qemu reboots to fix the error.
+
+
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
