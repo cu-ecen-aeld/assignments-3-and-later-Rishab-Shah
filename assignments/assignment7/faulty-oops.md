@@ -1,4 +1,4 @@
-echo “hello_world” > /dev/faulty <br /> 
+# Output log from when echo “hello_world” > /dev/faulty is run <br /> 
 Unable to handle kernel NULL pointer dereference at virtual address 0000000000000000 <br /> 
 Mem abort info: <br /> 
   ESR = 0x96000046 <br /> 
@@ -46,6 +46,7 @@ Code: d2800001 d2800000 d503233f d50323bf (b900003f)  <br />
 ---[ end trace 5f56549fa8e1c4b8 ]--- <br />
  
 -----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+# Objdump output:
 /home/rishab/assignment-4-Rishab-Shah/buildroot/output/build/ldd-7dae648a9f304151b0e268a62d0d2a1007793b4f/misc-modules/faulty.ko:     file format elf64-littleaarch64
 <br />
 
@@ -63,14 +64,13 @@ Disassembly of section .text: <br />
 
 
 -----------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
+# Explanation:
 From the call trace it is clear that, the problem occured when faulty_write was called. <br />
 On performing the disassembly of the faulty.ko file, it is seen that the 0 is updated on a memory address 0. <br />
 i.e. a invalid memory location is accessed on memory location 4. <br />
 
 This would cause to update any random memory and create issue. <br />
 Hence, when this happens the qemu reboots to fix the error. <br />
-
 
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
