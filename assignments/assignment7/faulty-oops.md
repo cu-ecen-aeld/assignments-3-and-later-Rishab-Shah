@@ -15,7 +15,7 @@ Modules linked in: hello(O) faulty(O) scull(O) <br />
 CPU: 0 PID: 159 Comm: sh Tainted: G      D    O      5.10.7 #1 <br /> 
 Hardware name: linux,dummy-virt (DT) <br /> 
 pstate: 80000005 (Nzcv daif -PAN -UAO -TCO BTYPE=--) <br /> 
-pc : faulty_write+0x10/0x20 [faulty] <br /> 
+**pc : faulty_write+0x10/0x20 [faulty]** <br /> 
 lr : vfs_write+0xc0/0x290 <br /> 
 sp : ffffffc010c53db0 <br /> 
 x29: ffffffc010c53db0 x28: ffffff8001ff0000 <br /> 
@@ -67,7 +67,7 @@ Disassembly of section .text: <br />
 # Explanation:
 From the call trace it is clear that, the problem occured when faulty_write was called. <br />
 On performing the disassembly of the faulty.ko file, it is seen that the 0 is updated on a memory address 0. <br />
-i.e. a invalid memory location is accessed on memory location 4. <br />
+i.e. a invalid memory location is accessed on memory location ** 0x10** bold highligted. <br />
 
 This would cause to update any random memory and create issue. <br />
 Hence, when this happens the qemu reboots to fix the error. <br />
