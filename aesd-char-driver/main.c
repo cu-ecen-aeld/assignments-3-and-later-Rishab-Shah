@@ -21,17 +21,23 @@
 int aesd_major =   0; // use dynamic major
 int aesd_minor =   0;
 
-MODULE_AUTHOR("Your Name Here"); /** TODO: fill in your name **/
+MODULE_AUTHOR("Rishab Shah"); /** TODO: fill in your name **/
 MODULE_LICENSE("Dual BSD/GPL");
 
 struct aesd_dev aesd_device;
 
 int aesd_open(struct inode *inode, struct file *filp)
 {
+	struct aesd_dev *dev;
 	PDEBUG("open");
 	/**
 	 * TODO: handle open
 	 */
+  //scull code reference
+
+	dev = container_of(inode->i_cdev, struct aesd_dev, cdev);
+	filp->private_data = dev;
+
 	return 0;
 }
 
@@ -41,22 +47,26 @@ int aesd_release(struct inode *inode, struct file *filp)
 	/**
 	 * TODO: handle release
 	 */
+	 
 	return 0;
 }
 
-ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
-                loff_t *f_pos)
+ssize_t aesd_read(struct file *filp, char __user *buf, size_t count, loff_t *f_pos)
 {
 	ssize_t retval = 0;
+	//struct aesd_dev *dev = filp->private_data;
+	
 	PDEBUG("read %zu bytes with offset %lld",count,*f_pos);
 	/**
 	 * TODO: handle read
 	 */
+	 
+
+	 
 	return retval;
 }
 
-ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
-                loff_t *f_pos)
+ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count, loff_t *f_pos)
 {
 	ssize_t retval = -ENOMEM;
 	PDEBUG("write %zu bytes with offset %lld",count,*f_pos);
@@ -65,11 +75,12 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
 	 */
 	return retval;
 }
+
 struct file_operations aesd_fops = {
-	.owner =    THIS_MODULE,
-	.read =     aesd_read,
-	.write =    aesd_write,
-	.open =     aesd_open,
+	.owner   =  THIS_MODULE,
+	.read    =  aesd_read,
+	.write   =  aesd_write,
+	.open    =  aesd_open,
 	.release =  aesd_release,
 };
 
@@ -87,14 +98,11 @@ static int aesd_setup_cdev(struct aesd_dev *dev)
 	return err;
 }
 
-
-
 int aesd_init_module(void)
 {
 	dev_t dev = 0;
 	int result;
-	result = alloc_chrdev_region(&dev, aesd_minor, 1,
-			"aesdchar");
+	result = alloc_chrdev_region(&dev, aesd_minor, 1,"aesdchar");
 	aesd_major = MAJOR(dev);
 	if (result < 0) {
 		printk(KERN_WARNING "Can't get major %d\n", aesd_major);
@@ -105,6 +113,9 @@ int aesd_init_module(void)
 	/**
 	 * TODO: initialize the AESD specific portion of the device
 	 */
+	 //allocate memory, init lock, nit the circular buffer
+	 aesd_circular_buffer_init(&aesd_device.circ_buffer);
+	 
 
 	result = aesd_setup_cdev(&aesd_device);
 
@@ -124,6 +135,7 @@ void aesd_cleanup_module(void)
 	/**
 	 * TODO: cleanup AESD specific poritions here as necessary
 	 */
+	//free memory, release lock
 
 	unregister_chrdev_region(devno, 1);
 }
