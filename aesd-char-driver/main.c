@@ -17,7 +17,10 @@
 #include <linux/types.h>
 #include <linux/cdev.h>
 #include <linux/fs.h> // file_operations
+#include <linux/slab.h>
+#include <linux/string.h>
 #include "aesdchar.h"
+
 int aesd_major =   0; // use dynamic major
 int aesd_minor =   0;
 
@@ -36,6 +39,8 @@ int aesd_open(struct inode *inode, struct file *filp)
   //scull code reference
 
 	dev = container_of(inode->i_cdev, struct aesd_dev, cdev);
+	
+	//will point to aesd_dev struct
 	filp->private_data = dev;
 
 	return 0;
@@ -69,10 +74,75 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count, loff_t *f_p
 ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count, loff_t *f_pos)
 {
 	ssize_t retval = -ENOMEM;
-	PDEBUG("write %zu bytes with offset %lld",count,*f_pos);
+	size_t no_of_bytes_not_copied = 0;
+
 	/**
 	 * TODO: handle write
 	 */
+	char* check_newline = NULL;   //will change when \n is detected
+	struct aesd_dev *l_dev = NULL;
+	const char *data_overflow = NULL;
+	
+	//fetch the content received from the script
+	l_dev = (struct aesd_dev *)(filp->private_data);
+	
+	PDEBUG("write %zu bytes with offset %lld",count,*f_pos);
+	
+	//allocate memory as big as count, when the memory is initially empty
+	if(l_dev->buffer_entry.size == 0)
+	{
+      l_dev->buffer_entry.buffptr = kmalloc(count*sizeof(char),GFP_KERNEL);
+      
+      if(l_dev->buffer_entry.buffptr == NULL)
+      {
+        //error in allocation
+        return retval;
+      }
+	}
+	else
+	{
+	  //\n wa not detected previously. Hence, a realloc till \n is detected
+	  l_dev->buffer_entry.buffptr = krealloc(l_dev->buffer_entry.buffptr, (l_dev->buffer_entry.size + count), GFP_KERNEL);
+	  
+	  if(l_dev->buffer_entry.buffptr == NULL)
+	  {
+	     return retval;
+	  }
+	}
+	
+	//update content .buffptr
+	no_of_bytes_not_copied = copy_from_user((void *)(&l_dev->buffer_entry.buffptr[l_dev->buffer_entry.size]),buf,count);
+	if(no_of_bytes_not_copied != 0)
+	{
+	  PDEBUG("No of bytes failed to copy to kernel space is %ld",no_of_bytes_not_copied);
+	}
+	
+	//update with actual bytes copied subtracting no of bytes faie to copy as well
+	retval = count - no_of_bytes_not_copied;
+	
+	//data copied till now
+	l_dev->buffer_entry.size = l_dev->buffer_entry.size + retval;
+	
+	check_newline = strchr(l_dev->buffer_entry.buffptr,'\n');
+	if(check_newline != NULL)
+	{
+	  //void aesd_circular_buffer_add_entry(struct aesd_circular_buffer *buffer, const struct aesd_buffer_entry *add_entry)
+	  //write to the buffer
+	  data_overflow = aesd_circular_buffer_add_entry(&l_dev->circ_buffer,&l_dev->buffer_entry);	// two params:  1.content 2.size
+	    
+	  if(data_overflow != NULL)
+	  {
+	    kfree(data_overflow);
+	  }
+	  
+	  //reset everything as data is written to one of the circular buffer
+	  l_dev->buffer_entry.buffptr = NULL; 
+	  l_dev->buffer_entry.size = 0; 
+	  
+	  //reset the system for new \n
+	  check_newline = NULL;
+	}
+	
 	return retval;
 }
 
@@ -108,15 +178,16 @@ int aesd_init_module(void)
 		printk(KERN_WARNING "Can't get major %d\n", aesd_major);
 		return result;
 	}
+	
+	//buffer initilaized
 	memset(&aesd_device,0,sizeof(struct aesd_dev));
 
 	/**
 	 * TODO: initialize the AESD specific portion of the device
 	 */
-	 //allocate memory, init lock, nit the circular buffer
-	 aesd_circular_buffer_init(&aesd_device.circ_buffer);
+	 //allocate memory, init lock, init the circular buffer
+	//aesd_circular_buffer_init(&aesd_device.circ_buffer);
 	 
-
 	result = aesd_setup_cdev(&aesd_device);
 
 	if( result ) {
@@ -135,11 +206,10 @@ void aesd_cleanup_module(void)
 	/**
 	 * TODO: cleanup AESD specific poritions here as necessary
 	 */
-	//free memory, release lock
+	//free memory, release lock, circular buffer related handling
 
 	unregister_chrdev_region(devno, 1);
 }
-
 
 
 module_init(aesd_init_module);

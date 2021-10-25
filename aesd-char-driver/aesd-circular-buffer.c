@@ -48,6 +48,7 @@ struct aesd_buffer_entry *aesd_circular_buffer_find_entry_offset_for_fpos(struct
     }
     
     //less than case
+    //do
     while(1)
     {
       if(char_offset < curr_ref_position_size)
@@ -78,6 +79,7 @@ struct aesd_buffer_entry *aesd_circular_buffer_find_entry_offset_for_fpos(struct
       }
       
     }
+    //while(curr_ref_position == buffer->out_offs);
     
     return NULL;
 
@@ -90,16 +92,17 @@ struct aesd_buffer_entry *aesd_circular_buffer_find_entry_offset_for_fpos(struct
 * Any necessary locking must be handled by the caller
 * Any memory referenced in @param add_entry must be allocated by and/or must have a lifetime managed by the caller.
 */
-void aesd_circular_buffer_add_entry(struct aesd_circular_buffer *buffer, const struct aesd_buffer_entry *add_entry)
+const char* aesd_circular_buffer_add_entry(struct aesd_circular_buffer *buffer, const struct aesd_buffer_entry *add_entry)
 {
     /**
     * TODO: implement per description 
     */
     
     //null check
+    const char *data_overflow = NULL;
     if((buffer == NULL) || (add_entry == NULL))
     {
-      return;
+      return data_overflow;
     }
     
     //add content to the buffer as the data has passed error check 
@@ -109,7 +112,8 @@ void aesd_circular_buffer_add_entry(struct aesd_circular_buffer *buffer, const s
     //for the given entry addition , check the relative read(out) position
     if(buffer->full == true)
     {
-      //updated as per rewview comments from Dan
+      data_overflow = buffer->entry[buffer->out_offs].buffptr;
+      //updated as per review comments from Dan
       //buffer->out_offs++;
       buffer->out_offs = (  (buffer->out_offs + 1) % AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED);
     }
@@ -119,6 +123,8 @@ void aesd_circular_buffer_add_entry(struct aesd_circular_buffer *buffer, const s
     {
       buffer->full = true;
     }
+    
+    return data_overflow;
 }
 
 /**
