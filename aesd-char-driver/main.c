@@ -18,6 +18,7 @@
 #include <linux/cdev.h>
 #include <linux/fs.h> // file_operations
 #include <linux/slab.h>
+#include <linux/uaccess.h>  //copy_to_user
 #include <linux/string.h>
 #include "aesdchar.h"
 
@@ -59,12 +60,14 @@ int aesd_release(struct inode *inode, struct file *filp)
 ssize_t aesd_read(struct file *filp, char __user *buf, size_t count, loff_t *f_pos)
 {
 	ssize_t retval = 0;
-	//struct aesd_dev *dev = filp->private_data;
+	//struct aesd_dev *l_dev = NULL;
 	
 	PDEBUG("read %zu bytes with offset %lld",count,*f_pos);
 	/**
 	 * TODO: handle read
 	 */
+	//fetch the content received from the script
+	//l_dev = (struct aesd_dev *)filp->private_data;
 	 
 
 	 
@@ -88,6 +91,12 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count, loff
 	
 	PDEBUG("write %zu bytes with offset %lld",count,*f_pos);
 	
+	if(mutex_lock_interruptible(&(l_dev->device_lock)))
+	{
+	  PDEBUG("Failed to acquire lock");
+	  return -ERESTARTSYS;
+	}
+	
 	//allocate memory as big as count, when the memory is initially empty
 	if(l_dev->buffer_entry.size == 0)
 	{
@@ -96,6 +105,8 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count, loff
       if(l_dev->buffer_entry.buffptr == NULL)
       {
         //error in allocation
+        PDEBUG("NULL: buffptr 1");
+        mutex_unlock(&(l_dev->device_lock));
         return retval;
       }
 	}
@@ -106,6 +117,8 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count, loff
 	  
 	  if(l_dev->buffer_entry.buffptr == NULL)
 	  {
+	     PDEBUG("NULL: buffptr 2");
+	     mutex_unlock(&(l_dev->device_lock));
 	     return retval;
 	  }
 	}
@@ -143,6 +156,7 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count, loff
 	  check_newline = NULL;
 	}
 	
+	mutex_unlock(&(l_dev->device_lock));
 	return retval;
 }
 
@@ -186,7 +200,9 @@ int aesd_init_module(void)
 	 * TODO: initialize the AESD specific portion of the device
 	 */
 	 //allocate memory, init lock, init the circular buffer
-	//aesd_circular_buffer_init(&aesd_device.circ_buffer);
+	 //circular buffer is already iniialised
+	aesd_circular_buffer_init(&aesd_device.circ_buffer);
+	mutex_init(&aesd_device.device_lock);
 	 
 	result = aesd_setup_cdev(&aesd_device);
 

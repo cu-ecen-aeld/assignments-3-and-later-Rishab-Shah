@@ -37,7 +37,7 @@ struct aesd_dev
 	//circular buffer structure
 	struct aesd_circular_buffer circ_buffer;
 	//locking primttive to be added
-	struct mutex lock;     /* mutual exclusion semaphore     */
+	struct mutex device_lock;     /* mutual exclusion semaphore     */
 	
 	struct cdev cdev;	  /* Char device structure		*/
 };
