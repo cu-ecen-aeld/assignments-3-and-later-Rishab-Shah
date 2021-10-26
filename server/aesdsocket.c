@@ -54,10 +54,10 @@
 #define TIME_BUFFER           (120)
 
 //comment to run the normal code
-#define USE_AESD_CHAR_DEVICE   (0)
+#define USE_AESD_CHAR_DEVICE   (1)
 
 #if USE_AESD_CHAR_DEVICE
-  #define FILE_PATH_TO_WRITE    ("/dev/aesdchar")
+  #define FILE_PATH_TO_WRITE    ("/var/tmp/aesdsocketdata")
 #else
   #define FILE_PATH_TO_WRITE    ("/var/tmp/aesdsocketdata")
 #endif
