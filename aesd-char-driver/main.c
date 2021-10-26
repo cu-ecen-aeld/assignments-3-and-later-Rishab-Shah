@@ -187,7 +187,7 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count, loff
 	//data copied till now
 	l_dev->buffer_entry.size = l_dev->buffer_entry.size + retval;
 	
-	check_newline = strchr(l_dev->buffer_entry.buffptr,'\n');
+	check_newline = strnchr(l_dev->buffer_entry.buffptr,l_dev->buffer_entry.size,'\n');
 	if(check_newline != NULL)
 	{
 	  //void aesd_circular_buffer_add_entry(struct aesd_circular_buffer *buffer, const struct aesd_buffer_entry *add_entry)
