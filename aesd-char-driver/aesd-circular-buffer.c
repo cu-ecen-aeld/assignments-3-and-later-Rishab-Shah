@@ -15,6 +15,7 @@ https://www.youtube.com/watch?v=uvD9_Wdtjtw
 #include <linux/string.h>
 #else
 #include <string.h>
+#include <stdlib.h>
 #endif
 
 #include "aesd-circular-buffer.h"
@@ -159,7 +160,7 @@ void aesd_circular_buffer_exit_cleanup(struct aesd_circular_buffer *buffer)
 #ifdef __KERNEL__
 	    kfree(entry->buffptr);
 #else
-	    free(entry->buffptr);
+	    free((char *)entry->buffptr);
 #endif
       }
       
