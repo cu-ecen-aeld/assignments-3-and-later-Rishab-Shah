@@ -10,6 +10,7 @@
 
 #ifdef __KERNEL__
 #include <linux/types.h>
+#include <linux/slab.h>
 #else
 #include <stddef.h> // size_t
 #include <stdint.h> // uintx_t
@@ -58,6 +59,7 @@ const char* aesd_circular_buffer_add_entry(struct aesd_circular_buffer *buffer, 
 
 extern void aesd_circular_buffer_init(struct aesd_circular_buffer *buffer);
 
+extern void aesd_circular_buffer_exit_cleanup(struct aesd_circular_buffer *buffer);
 /**
  * Create a for loop to iterate over each member of the circular buffer.
  * Useful when you've allocated memory for circular buffer entries and need to free it

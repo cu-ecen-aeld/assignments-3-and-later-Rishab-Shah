@@ -40,7 +40,6 @@ int aesd_open(struct inode *inode, struct file *filp)
   //scull code reference
 
 	dev = container_of(inode->i_cdev, struct aesd_dev, cdev);
-	
 	//will point to aesd_dev struct
 	filp->private_data = dev;
 
@@ -274,7 +273,8 @@ void aesd_cleanup_module(void)
 	 * TODO: cleanup AESD specific poritions here as necessary
 	 */
 	//free memory, release lock, circular buffer related handling
-
+  aesd_circular_buffer_exit_cleanup(&aesd_device.circ_buffer);
+    
 	unregister_chrdev_region(devno, 1);
 }
 
