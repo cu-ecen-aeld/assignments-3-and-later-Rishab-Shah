@@ -84,6 +84,7 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count, loff_t *f_p
 	if(loc_hit == NULL)
 	{
 		retval = 0;
+		*f_pos = 0;
 	  //unlock mutex
 	  mutex_unlock(&(l_dev->device_lock));
 	  return retval;

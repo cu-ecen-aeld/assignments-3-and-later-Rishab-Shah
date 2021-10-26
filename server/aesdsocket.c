@@ -48,13 +48,13 @@
 #define PORT_NO				        (9000)
 #define PORT_BIND			        ("1234")
 #define BACK_LOG			        (10)
-#define BUFFER_CAPACITY       (100)
+#define BUFFER_CAPACITY       (1)
 
 #define MULTIPLIER_FACTOR     (2)
 #define TIME_BUFFER           (120)
 
 //comment to run the normal code
-#define USE_AESD_CHAR_DEVICE   (1)
+#define USE_AESD_CHAR_DEVICE    (1)
 
 #if USE_AESD_CHAR_DEVICE
   #define FILE_PATH_TO_WRITE    ("/var/tmp/aesdsocketdata")
@@ -76,6 +76,7 @@ typedef struct slist_data_s
   SLIST_ENTRY(slist_data_s) entries;
 }slist_data_t;
 
+int counter = 0;
 int file_des = 0;
 int server_socket_fd = 0;
 int client_accept_fd = 0;
@@ -118,10 +119,21 @@ static inline void timespec_add( struct timespec *result,
 
 void *recv_client_send_server(void *thread_parameters)
 {
-
+#if 0
+    /* file open logic */
+    mode_t mode = S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH;
+    char* filename = FILE_PATH_TO_WRITE;
+    int file_des1 = open(filename, (O_RDWR | O_CREAT), mode);
+    if(file_des1 == -1) //file_ptr
+    {
+      syslog(LOG_ERR,"file creation,opening failure\n");
+      perror("file creation");
+      //return -1;
+    }
+ #endif 
     /* sig status */
     int sig_status = 0;
-    
+
     threadParams_t *l_tp = (threadParams_t*) thread_parameters;
     syslog(LOG_DEBUG, "client fd rcvd is %d",l_tp->thread_accept_fd);
     
@@ -185,7 +197,8 @@ void *recv_client_send_server(void *thread_parameters)
          
       if((no_of_bytes_rcvd+curr_location) >= write_buffer_size)
       {
-        write_buffer_size *= MULTIPLIER_FACTOR;
+        //write_buffer_size *= MULTIPLIER_FACTOR;
+        write_buffer_size += MULTIPLIER_FACTOR;
         syslog(LOG_DEBUG,"write_buffer_size = %d\n",write_buffer_size);
 
         char* tmpptr = (char *)realloc(writer_file_buffer_ptr, (sizeof(char) * write_buffer_size) );
@@ -219,19 +232,21 @@ void *recv_client_send_server(void *thread_parameters)
     
     int ret_status = 0;
     ret_status = write(file_des,writer_file_buffer_ptr,curr_location);
-    //syslog(LOG_DEBUG,"return status  = %d\n",ret_status);
+    syslog(LOG_DEBUG,"return status  = %d\n",ret_status);
     if(ret_status == -1)
     {
       syslog(LOG_ERR,"file writing failure\n");
       perror("file writing");
     }
     
+    counter = counter + ret_status;
+    syslog(LOG_DEBUG,"counter  = %d\n",counter);
+    /* present number of byts in file */
+    //current_data_pos = lseek(file_des,0,SEEK_CUR);
+    //syslog(LOG_DEBUG,"position is %d\n",current_data_pos);
+    current_data_pos = counter;
     pthread_mutex_unlock(&data_lock);
 
-    /* present number of byts in file */
-    current_data_pos = lseek(file_des,0,SEEK_CUR);
-    syslog(LOG_DEBUG,"position is %d\n",current_data_pos);
-    
     lseek(file_des,0,SEEK_SET);
     
     int bytes_sent = 0;
@@ -331,6 +346,7 @@ void *recv_client_send_server(void *thread_parameters)
     writer_file_buffer_ptr = NULL;
     
     l_tp->thread_completion_status = true;
+    //close(file_des1);
     return NULL;
 }
 
@@ -573,6 +589,7 @@ int main(int argc, char *argv[])
     return -1;
   }
   
+  #if 1
   /* file open logic */
   mode_t mode = S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH;
   char* filename = FILE_PATH_TO_WRITE;
@@ -583,6 +600,7 @@ int main(int argc, char *argv[])
     perror("file creation");
     return -1;
   }
+  #endif
   
   bool run_status = true;
     
