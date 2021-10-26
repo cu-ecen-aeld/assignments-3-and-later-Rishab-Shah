@@ -77,7 +77,7 @@ typedef struct slist_data_s
 }slist_data_t;
 
 int counter = 0;
-int file_des = 0;
+//int file_des = 0;
 int server_socket_fd = 0;
 int client_accept_fd = 0;
 #if USE_AESD_CHAR_DEVICE
@@ -119,12 +119,12 @@ static inline void timespec_add( struct timespec *result,
 
 void *recv_client_send_server(void *thread_parameters)
 {
-#if 0
+#if 1
     /* file open logic */
     mode_t mode = S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH;
     char* filename = FILE_PATH_TO_WRITE;
-    int file_des1 = open(filename, (O_RDWR | O_CREAT), mode);
-    if(file_des1 == -1) //file_ptr
+    int file_des = open(filename, (O_RDWR | O_CREAT), mode);
+    if(file_des == -1) //file_ptr
     {
       syslog(LOG_ERR,"file creation,opening failure\n");
       perror("file creation");
@@ -346,7 +346,7 @@ void *recv_client_send_server(void *thread_parameters)
     writer_file_buffer_ptr = NULL;
     
     l_tp->thread_completion_status = true;
-    //close(file_des1);
+    close(file_des);
     return NULL;
 }
 
@@ -589,7 +589,7 @@ int main(int argc, char *argv[])
     return -1;
   }
   
-  #if 1
+  #if 0
   /* file open logic */
   mode_t mode = S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH;
   char* filename = FILE_PATH_TO_WRITE;
@@ -753,7 +753,7 @@ void exit_handling()
 #endif
   close(client_accept_fd);
   close(server_socket_fd);
-  close(file_des);
+  //close(file_des);
   closelog();
     
   pthread_mutex_destroy(&data_lock);
