@@ -206,6 +206,8 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count, loff
 	  check_newline = NULL;
 	}
 	
+	*f_pos = 0;
+	
 	mutex_unlock(&(l_dev->device_lock));
 	return retval;
 }

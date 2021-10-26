@@ -145,13 +145,16 @@ void aesd_circular_buffer_exit_cleanup(struct aesd_circular_buffer *buffer)
     
     AESD_CIRCULAR_BUFFER_FOREACH(entry,buffer,index)
     {
+      if(entry->buffptr != NULL)
+      {
     
 #ifdef __KERNEL__
 	    kfree(entry->buffptr);
 #else
 	    free(entry->buffptr);
 #endif
-
+      }
+      
     }
 }
 
