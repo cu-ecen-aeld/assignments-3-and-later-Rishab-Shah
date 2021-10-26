@@ -105,6 +105,11 @@ const char* aesd_circular_buffer_add_entry(struct aesd_circular_buffer *buffer, 
       return data_overflow;
     }
     
+    if(buffer->full)
+    {
+      data_overflow = buffer->entry[buffer->in_offs].buffptr;
+    }
+    
     //add content to the buffer as the data has passed error check 
     buffer->entry[buffer->in_offs] = *add_entry;
     buffer->in_offs = ( (buffer->in_offs + 1) % AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED);
@@ -112,7 +117,6 @@ const char* aesd_circular_buffer_add_entry(struct aesd_circular_buffer *buffer, 
     //for the given entry addition , check the relative read(out) position
     if(buffer->full == true)
     {
-      data_overflow = buffer->entry[buffer->out_offs].buffptr;
       //updated as per review comments from Dan
       //buffer->out_offs++;
       buffer->out_offs = (  (buffer->out_offs + 1) % AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED);
@@ -122,6 +126,10 @@ const char* aesd_circular_buffer_add_entry(struct aesd_circular_buffer *buffer, 
     if(buffer->in_offs == buffer->out_offs)
     {
       buffer->full = true;
+    }
+    else
+    {
+      buffer->full = false;
     }
     
     return data_overflow;

@@ -102,7 +102,7 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count, loff_t *f_p
 	  PDEBUG("Should not reached here");
 	}
 	
-	bytes_failed_to_copy = copy_to_user(buf, &loc_hit->buffptr[off_byte_pos], bytes_to_be_read_out);
+	bytes_failed_to_copy = copy_to_user(buf, (loc_hit->buffptr+off_byte_pos), bytes_to_be_read_out);
 	if(bytes_failed_to_copy != 0)
 	{
 	  retval = -EFAULT;
