@@ -49,10 +49,18 @@
 #define PORT_BIND			        ("1234")
 #define BACK_LOG			        (10)
 #define BUFFER_CAPACITY       (100)
-#define FILE_PATH_TO_WRITE    ("/var/tmp/aesdsocketdata")
+
 #define MULTIPLIER_FACTOR     (2)
 #define TIME_BUFFER           (120)
 
+//comment to run the normal code
+#define USE_AESD_CHAR_DEVICE   (0)
+
+#if USE_AESD_CHAR_DEVICE
+  #define FILE_PATH_TO_WRITE    ("/dev/aesdchar")
+#else
+  #define FILE_PATH_TO_WRITE    ("/var/tmp/aesdsocketdata")
+#endif
 
 typedef struct
 {
@@ -71,7 +79,12 @@ typedef struct slist_data_s
 int file_des = 0;
 int server_socket_fd = 0;
 int client_accept_fd = 0;
-timer_t timerid;
+#if USE_AESD_CHAR_DEVICE
+
+#else
+  timer_t timerid;
+#endif
+
 
 int g_Signal_handler_detection = 0;
 pthread_mutex_t data_lock;
@@ -81,7 +94,12 @@ void *get_in_addr(struct sockaddr *sa);
 void socket_termination_signal_handler(int signo);
 void exit_handling();
 void *recv_client_send_server(void *thread_parameters);
+
+#if USE_AESD_CHAR_DEVICE
+
+#else
 static void timer_thread();
+#endif
 
 
 /**
@@ -209,7 +227,7 @@ void *recv_client_send_server(void *thread_parameters)
     }
     
     pthread_mutex_unlock(&data_lock);
-    
+
     /* present number of byts in file */
     current_data_pos = lseek(file_des,0,SEEK_CUR);
     syslog(LOG_DEBUG,"position is %d\n",current_data_pos);
@@ -317,6 +335,9 @@ void *recv_client_send_server(void *thread_parameters)
 }
 
 
+#if USE_AESD_CHAR_DEVICE
+
+#else
 // https://www.tutorialspoint.com/c_standard_library/c_function_strftime.htm
 // timer thread to add timestamps
 // https://man7.org/linux/man-pages/man3/strftime.3.html
@@ -368,6 +389,8 @@ timer_exit_location:
     free(time_stamp);
     
 }
+#endif
+
 
 /* Start of program */
 int main(int argc, char *argv[])
@@ -490,7 +513,11 @@ int main(int argc, char *argv[])
     dup(0);
   }
   #endif
-  
+
+#if USE_AESD_CHAR_DEVICE
+
+#else
+
   //for both context
   struct sigevent sev;
   struct timespec start_time;
@@ -533,6 +560,9 @@ int main(int argc, char *argv[])
     perror("timer_settime error");
     return -1;
   } 
+  
+#endif
+
   
   /* listen */
   int server_listen_fd = 0;
@@ -671,7 +701,11 @@ void socket_termination_signal_handler(int signo)
     perror("Failed on shutdown");
     syslog(LOG_ERR,"Could not close socket fd in signal handler: %s",strerror(errno));
   }
-  
+ 
+#if USE_AESD_CHAR_DEVICE
+
+#else
+
   int ret_status = 0;
   ret_status = timer_delete(timerid);
   if(ret_status == -1)
@@ -679,6 +713,8 @@ void socket_termination_signal_handler(int signo)
    
   syslog(LOG_DEBUG,"deleting timer");
 
+#endif
+  
   g_Signal_handler_detection = 1;
 
 }
@@ -690,10 +726,13 @@ void exit_handling()
   //close open sockets
   //delete the FILE createdfSL
   syslog(LOG_DEBUG,"exit_handling");
+#if USE_AESD_CHAR_DEVICE
+  //Don't remove file for /dev/aesdchar - driver is not a file
+#else
   int ret_status = 0;
   ret_status = remove(FILE_PATH_TO_WRITE);
   syslog(LOG_DEBUG,"ret_status - remove:: %d\n",ret_status);
-  
+#endif
   close(client_accept_fd);
   close(server_socket_fd);
   close(file_des);
