@@ -57,7 +57,7 @@
 #define USE_AESD_CHAR_DEVICE    (1)
 
 #if USE_AESD_CHAR_DEVICE
-  #define FILE_PATH_TO_WRITE    ("/var/tmp/aesdsocketdata")
+  #define FILE_PATH_TO_WRITE    ("/dev/aesdchar")
 #else
   #define FILE_PATH_TO_WRITE    ("/var/tmp/aesdsocketdata")
 #endif
