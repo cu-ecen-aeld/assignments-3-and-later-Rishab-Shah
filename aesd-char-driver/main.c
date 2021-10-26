@@ -60,17 +60,68 @@ int aesd_release(struct inode *inode, struct file *filp)
 ssize_t aesd_read(struct file *filp, char __user *buf, size_t count, loff_t *f_pos)
 {
 	ssize_t retval = 0;
-	//struct aesd_dev *l_dev = NULL;
 	
-	PDEBUG("read %zu bytes with offset %lld",count,*f_pos);
-	/**
-	 * TODO: handle read
-	 */
+	struct aesd_dev *l_dev = NULL;
+	struct aesd_buffer_entry *loc_hit = NULL;
+  size_t off_byte_pos = 0;
+  size_t bytes_to_be_read_out = 0;
+  size_t bytes_failed_to_copy = 0;
+	
+  PDEBUG("read %zu bytes with offset %lld",count,*f_pos);
 	//fetch the content received from the script
-	//l_dev = (struct aesd_dev *)filp->private_data;
-	 
-
-	 
+	l_dev = (struct aesd_dev *)filp->private_data;
+	
+	//take mutex
+	if(mutex_lock_interruptible(&(l_dev->device_lock)))
+	{
+	  PDEBUG("failed to acquire lock:read");
+	  return -ERESTARTSYS;
+	}
+	
+  //function would return the block as per the char offset value, initial it will be 0 
+  //at first read
+	loc_hit = aesd_circular_buffer_find_entry_offset_for_fpos(&l_dev->circ_buffer,*f_pos, &off_byte_pos);
+	
+	if(loc_hit == NULL)
+	{
+		retval = 0;
+	  //unlock mutex
+	  mutex_unlock(&(l_dev->device_lock));
+	  return retval;
+	}
+	else if(loc_hit != NULL)
+	{   
+	   bytes_to_be_read_out = (loc_hit->size - off_byte_pos);
+	   if(bytes_to_be_read_out > count)
+	   {
+	      //restricting to bytes requested by user
+	      bytes_to_be_read_out = count;
+ 	   }
+	}
+	else
+	{
+	  PDEBUG("Should not reached here");
+	}
+	
+	bytes_failed_to_copy = copy_to_user(buf, &loc_hit->buffptr[off_byte_pos], bytes_to_be_read_out);
+	if(bytes_failed_to_copy != 0)
+	{
+	  retval = -EFAULT;
+	  //unlock mutex
+	  mutex_unlock(&(l_dev->device_lock));
+	  return retval;
+	}
+	else
+	{
+	  // bytes that were succesfully copied to userspace
+	  retval = bytes_to_be_read_out;
+	}
+	
+	//increment position of fpos
+	*f_pos += bytes_to_be_read_out;
+	
+  //unlock mutex
+  mutex_unlock(&(l_dev->device_lock));
 	return retval;
 }
 
@@ -112,7 +163,7 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count, loff
 	}
 	else
 	{
-	  //\n wa not detected previously. Hence, a realloc till \n is detected
+	  //\n was not detected previously. Hence, a realloc till \n is detected
 	  l_dev->buffer_entry.buffptr = krealloc(l_dev->buffer_entry.buffptr, (l_dev->buffer_entry.size + count), GFP_KERNEL);
 	  
 	  if(l_dev->buffer_entry.buffptr == NULL)
